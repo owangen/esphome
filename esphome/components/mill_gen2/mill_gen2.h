@@ -13,6 +13,7 @@ class MillGen2 :  public esphome::Component,
 
 public:
   MillGen2();
+  ~MillGen2();
   void setup() override;
   void loop() override;
   void control(const climate::ClimateCall &call) override;
@@ -34,6 +35,8 @@ private:
   static constexpr size_t BUFFER_SIZE = 15;
   char receivedChars[BUFFER_SIZE];
   bool newData = false;
+
+  esphome::climate::ClimateTraits traits_;
 
   static constexpr size_t COMMAND_TYPE_POS = 4;
   static constexpr size_t TARGET_TEMP_POS = 6;
