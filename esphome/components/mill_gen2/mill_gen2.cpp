@@ -111,6 +111,7 @@ void MillGen2::receiveSerialData() {
   char rc;
 
   if (Serial.available() > 0) {
+    ESP_LOGD(TAG, "Receive serial data");
     rc = Serial.read();
     if (recvInProgress == true) {
       if ((rc != endMarker) && (rc != lineend)) {
@@ -141,7 +142,7 @@ unsigned char MillGen2::calculateChecksum(char *buffer, size_t length) {
 }
 /* Seriedata ut til mill mikrokontroller ---*/
 void MillGen2::sendCommand(char* arrayen, int len, int commando) {
-  ESP_LOGD("custom", "Sending serial command");
+  ESP_LOGD(TAG, "Sending serial command");
   if (arrayen[4] == 0x46) { // Temperatur (OLD  0x43)
     arrayen[7] = commando;
   }
@@ -150,7 +151,7 @@ void MillGen2::sendCommand(char* arrayen, int len, int commando) {
     arrayen[len] = (byte)0x00;  // Padding..
   }
   char crc = calculateChecksum(arrayen, len + 1);
-  ESP_LOGD("custom", "writing start byte");
+  ESP_LOGD(TAG, "writing start byte");
   Serial.write((byte)0x5A); // Startbyte
   for (int i = 0; i < len + 1; i++) { // Beskjed
     Serial.write((byte)arrayen[i]);
