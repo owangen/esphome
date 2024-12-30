@@ -24,13 +24,8 @@ protected:
 
 private:
   void receiveSerialData();
-  void processReceivedData();
-  void handleModeChange(climate::ClimateMode mode);
-  void sendPowerCommand(int command);
-  void sendTemperatureCommand(int temperature);
-  void modifyCommand(char *command, size_t length, int value, size_t position);
-  unsigned char calculateChecksum(const char *buffer, size_t length);
-  void sendCommand(char *command, size_t length);
+  void sendCommand(char* arrayen, int len, int commando);
+  unsigned char calculateChecksum(char *buffer, size_t length);
 
   static constexpr size_t BUFFER_SIZE = 15;
   char receivedChars[BUFFER_SIZE];

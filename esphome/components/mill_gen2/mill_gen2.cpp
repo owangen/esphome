@@ -33,7 +33,7 @@ void MillGen2::dump_config() {
 }
 
 void MillGen2::loop() {
-  recvWithStartEndMarkers();
+  receiveSerialData();
       ESP_LOGD("custom", "loop");
       if (newData == true) {
         newData = false;    
@@ -76,10 +76,10 @@ void MillGen2::control(const climate::ClimateCall &call) {
 
         switch (call.get_mode().value()) {
                 case CLIMATE_MODE_OFF:
-                  sendCmd(setPower, sizeof(setPower), 0x00);
+                  sendCommand(setPower, sizeof(setPower), 0x00);
                     break;
                 case CLIMATE_MODE_HEAT:
-                  sendCmd(setPower, sizeof(setPower), 0x01);
+                  sendCommand(setPower, sizeof(setPower), 0x01);
                     break;
                 default:
                     break;
@@ -94,7 +94,7 @@ void MillGen2::control(const climate::ClimateCall &call) {
     if (call.get_target_temperature().has_value()) {
       // User requested target temperature change
       int temp = *call.get_target_temperature();
-      sendCmd(setTemp, sizeof(setTemp), temp);
+      sendCommand(setTemp, sizeof(setTemp), temp);
       // ...
       this->target_temperature = temp;
       this->publish_state();
@@ -102,7 +102,7 @@ void MillGen2::control(const climate::ClimateCall &call) {
     }
 }
 
-void recvWithStartEndMarkers() {
+void MillGen2::receiveSerialData() {
   static boolean recvInProgress = false;
   static byte ndx = 0;
   char startMarker = 0x5A;
@@ -131,25 +131,25 @@ void recvWithStartEndMarkers() {
 }
 
 /*--- Funksjon for summering av kontrollbyte ---*/
-unsigned char checksum(char *buf, int len) {
+unsigned char MillGen2::calculateChecksum(char *buffer, size_t length) {
 
   unsigned char chk = 0;
-  for ( ; len != 0; len--) {
-    chk += *buf++;
+  for ( ; length != 0; length--) {
+    chk += *buffer++;
   }
   return chk;
 }
 /* Seriedata ut til mill mikrokontroller ---*/
-void sendCmd(char* arrayen, int len, int kommando) {
+void MillGen2::sendCommand(char* arrayen, int len, int commando) {
   ESP_LOGD("custom", "Sending serial command");
   if (arrayen[4] == 0x46) { // Temperatur (OLD  0x43)
-    arrayen[7] = kommando;
+    arrayen[7] = commando;
   }
   if (arrayen[4] == 0x47) { // Power av/på
-    arrayen[5] = kommando;
+    arrayen[5] = commando;
     arrayen[len] = (byte)0x00;  // Padding..
   }
-  char crc = checksum(arrayen, len + 1);
+  char crc = calculateChecksum(arrayen, len + 1);
   ESP_LOGD("custom", "writing start byte");
   Serial.write((byte)0x5A); // Startbyte
   for (int i = 0; i < len + 1; i++) { // Beskjed
