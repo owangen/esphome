@@ -126,7 +126,7 @@ void MillGen2::loop() {
   //     this->publish_state();
   //   }
   //}
-}
+//}
 
 ClimateTraits MillGen2::traits() { return traits_; }
 
