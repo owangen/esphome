@@ -87,34 +87,34 @@ ClimateTraits MillGen2::traits() { return traits_; }
 void MillGen2::control(const climate::ClimateCall &call) {
   ESP_LOGD(TAG, "Climate change requested");
 
-    if (call.get_mode().has_value()) {
+    // if (call.get_mode().has_value()) {
 
-        switch (call.get_mode().value()) {
-                case CLIMATE_MODE_OFF:
-                  sendCommand(setPower, sizeof(setPower), 0x00);
-                    break;
-                case CLIMATE_MODE_HEAT:
-                  sendCommand(setPower, sizeof(setPower), 0x01);
-                    break;
-                default:
-                    break;
-        }
+    //     switch (call.get_mode().value()) {
+    //             case CLIMATE_MODE_OFF:
+    //               sendCommand(setPower, sizeof(setPower), 0x00);
+    //                 break;
+    //             case CLIMATE_MODE_HEAT:
+    //               sendCommand(setPower, sizeof(setPower), 0x01);
+    //                 break;
+    //             default:
+    //                 break;
+    //     }
 
-      ClimateMode mode = *call.get_mode();
+    //   ClimateMode mode = *call.get_mode();
 
-      this->mode = mode;
-      this->publish_state();
-        }
+    //   this->mode = mode;
+    //   this->publish_state();
+    //     }
 
-    if (call.get_target_temperature().has_value()) {
-      // User requested target temperature change
-      int temp = *call.get_target_temperature();
-      sendCommand(setTemp, sizeof(setTemp), temp);
-      // ...
-      this->target_temperature = temp;
-      this->publish_state();
+    // if (call.get_target_temperature().has_value()) {
+    //   // User requested target temperature change
+    //   int temp = *call.get_target_temperature();
+    //   sendCommand(setTemp, sizeof(setTemp), temp);
+    //   // ...
+    //   this->target_temperature = temp;
+    //   this->publish_state();
 
-    }
+    // }
 }
 
 // void MillGen2::receiveSerialData() {
@@ -156,24 +156,24 @@ unsigned char MillGen2::calculateChecksum(char *buffer, size_t length) {
   return chk;
 }
 /* Seriedata ut til mill mikrokontroller ---*/
-void MillGen2::sendCommand(char* arrayen, int len, int commando) {
-  ESP_LOGD(TAG, "Sending serial command");
-  if (arrayen[4] == 0x46) { // Temperatur (OLD  0x43)
-    arrayen[7] = commando;
-  }
-  if (arrayen[4] == 0x47) { // Power av/på
-    arrayen[5] = commando;
-    arrayen[len] = (char)0x00;  // Padding..
-  }
-  char crc = calculateChecksum(arrayen, len + 1);
-  ESP_LOGD(TAG, "writing start byte");
-  Serial.write((char)0x5A); // Startbyte
-  for (int i = 0; i < len + 1; i++) { // Beskjed
-    Serial.write((char)arrayen[i]);
-  }
-  Serial.write((char)crc); // Kontrollbyte
-  Serial.write((char)0x5B); // Stoppbyte
-}
+// void MillGen2::sendCommand(char* arrayen, int len, int commando) {
+//   ESP_LOGD(TAG, "Sending serial command");
+//   if (arrayen[4] == 0x46) { // Temperatur (OLD  0x43)
+//     arrayen[7] = commando;
+//   }
+//   if (arrayen[4] == 0x47) { // Power av/på
+//     arrayen[5] = commando;
+//     arrayen[len] = (char)0x00;  // Padding..
+//   }
+//   char crc = calculateChecksum(arrayen, len + 1);
+//   ESP_LOGD(TAG, "writing start byte");
+//   Serial.write((char)0x5A); // Startbyte
+//   for (int i = 0; i < len + 1; i++) { // Beskjed
+//     Serial.write((char)arrayen[i]);
+//   }
+//   Serial.write((char)crc); // Kontrollbyte
+//   Serial.write((char)0x5B); // Stoppbyte
+// }
 
 }  // namespace mill_gen2
 }  // namespace esphome
