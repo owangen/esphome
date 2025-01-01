@@ -7,9 +7,9 @@
 namespace esphome {
 namespace mill_gen2 {
 
-class MillGen2 :  public esphome::Component,
-                  public esphome::climate::Climate,
-                  public esphome::uart::UARTDevice {
+class MillGen2 :  public Component,
+                  public climate::Climate,
+                  public uart::UARTDevice {
 
 public:
   MillGen2();
@@ -20,7 +20,7 @@ public:
   void dump_config() override;
 
 protected:
-  esphome::climate::ClimateTraits traits() override;
+  climate::ClimateTraits traits() override;
 
 private:
   void receiveSerialData();
@@ -32,7 +32,7 @@ private:
   bool newData = false;
   std::string buffer_;
 
-  esphome::climate::ClimateTraits traits_;
+  climate::ClimateTraits traits_;
 
   static constexpr size_t COMMAND_TYPE_POS = 4;
   static constexpr size_t TARGET_TEMP_POS = 6;

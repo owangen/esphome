@@ -24,7 +24,7 @@ CODEOWNERS = ["@owangen"]
 DEPENDENCIES = ["climate", "uart"]
 
 mill_gen2_ns = cg.esphome_ns.namespace("mill_gen2")
-MillGen2 = mill_gen2_ns.class_("MillGen2", uart.UARTDevice, climate.Climate, cg.Component)
+MillHeater = mill_gen2_ns.class_("MillGen2", uart.UARTDevice, climate.Climate, cg.Component)
 
 CONF_MILL_ID = "mill_id"
 
@@ -34,14 +34,11 @@ SUPPORTED_CLIMATE_MODES_OPTIONS = {
 }
 
 
-CONFIG_SCHEMA = (
+CONFIG_SCHEMA = cv.All(
   climate.CLIMATE_SCHEMA.extend(
     {
-      cv.GenerateID(): cv.declare_id(MillGen2),
-      cv.GenerateID(): cv.use_id(climate.Climate),
-      cv.Optional(CONF_SUPPORTED_MODES): cv.ensure_list(
-                cv.enum(SUPPORTED_CLIMATE_MODES_OPTIONS, upper=True)
-            ),
+      cv.GenerateID(): cv.declare_id(MillHeater),
+      cv.Optional(CONF_SUPPORTED_MODES): cv.ensure_list(cv.enum(SUPPORTED_CLIMATE_MODES_OPTIONS, upper=True)),
     }
   )
   .extend(uart.UART_DEVICE_SCHEMA)
