@@ -36,9 +36,12 @@ void MillGen2::dump_config() {
 }
 
 void MillGen2::loop() {
+  ESP_LOGI(TAG, "NY LINJE----------------------------");
   while (this->available() != 0) {
     this->read_byte(&this->data_[this->data_index_]);
     ESP_LOGI(TAG, "Byte %i received data ", this->data_index_);
+    uint8_t byte = this->data_[this->data_index_];
+    ESP_LOGI(TAG, "Byte %i received data byte ", byte);
     this->data_index_++;
     // auto check = this->check_byte_();
     // if (!check.has_value()) {
