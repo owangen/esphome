@@ -27,7 +27,6 @@ mill_gen2_ns = cg.esphome_ns.namespace("mill_gen2")
 MillGen2 = mill_gen2_ns.class_("MillGen2", uart.UARTDevice, climate.Climate, cg.Component)
 
 CONF_MILL_ID = "mill_id"
-CONF_CLIMATE_ID = "climate_id"
 
 SUPPORTED_CLIMATE_MODES_OPTIONS = {
     "OFF": ClimateMode.CLIMATE_MODE_OFF,  # always available
@@ -39,7 +38,7 @@ CONFIG_SCHEMA = (
   climate.CLIMATE_SCHEMA.extend(
     {
       cv.GenerateID(): cv.declare_id(MillGen2),
-      cv.GenerateID(CONF_CLIMATE_ID): cv.use_id(climate.Climate),
+      cv.GenerateID(): cv.use_id(climate.Climate),
       cv.Optional(CONF_SUPPORTED_MODES): cv.ensure_list(
                 cv.enum(SUPPORTED_CLIMATE_MODES_OPTIONS, upper=True)
             ),
@@ -54,5 +53,4 @@ async def to_code(config):
   var = cg.new_Pvariable(config[CONF_ID])
   await cg.register_component(var, config)
   await uart.register_uart_device(var, config)
-  clim = await cg.get_variable(config[CONF_CLIMATE_ID])
-  cg.add(var.set_climate(clim))
+  await climate.register_climate(var, config)
