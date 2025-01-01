@@ -18,9 +18,9 @@ char setPower[] = {0x00, 0x10, 0x06, 0x00, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0
 char setTemp[] = {0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00}; 
 
 MillGen2::MillGen2() {
-  this->traits_ = climate::ClimateTraits();
-  this->traits_.set_supported_modes({climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT});
-  this->traits_.set_supports_current_temperature(true);
+  // this->traits_ = climate::ClimateTraits();
+  // this->traits_.set_supported_modes({climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT});
+  // this->traits_.set_supports_current_temperature(true);
 }
 
 MillGen2::~MillGen2() {}
