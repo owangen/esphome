@@ -30,6 +30,7 @@ private:
   static constexpr size_t BUFFER_SIZE = 15;
   char receivedChars[BUFFER_SIZE];
   bool newData = false;
+  std::string buffer_;
 
   esphome::climate::ClimateTraits traits_;
 

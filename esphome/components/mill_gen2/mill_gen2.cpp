@@ -1,5 +1,6 @@
 #include "esphome/components/climate/climate.h"
 #include "esphome/components/uart/uart.h"
+#include "esphome/core/log.h"
 #include "mill_gen2.h"
 
 using namespace esphome::climate;
@@ -33,37 +34,52 @@ void MillGen2::dump_config() {
 }
 
 void MillGen2::loop() {
-  receiveSerialData();
-  ESP_LOGD(TAG, "loop");
-  if (newData == true) {
-    newData = false;
-
-    if (receivedChars[4] == 0xC9) {  // Filtrer ut unødig informasjon
-      ESP_LOGD("custom", "receivedChars");
-      // for (int element : receivedChars) { // for each element in the array
-      // ESP_LOGI("Recivedbytes", "%x", receivedChars[element ]);
+uint8_t data;
+  while (this->available() > 0) {
+    if (this->read_byte(&data)) {
+      buffer_ += (char) data;
+      ESP_LOGI("Recivedbytes", "%x", data);
+      ESP_LOGI("Recivedbytes2", "%x", buffer_);
+      // if (this->buffer_.back() == static_cast<char>(ASCII_LF) || this->buffer_.length() >= MAX_DATA_LENGTH_BYTES) {
+      //   // complete line received
+      //   this->process_line_();
+      //   this->buffer_.clear();
       // }
-
-      if (receivedChars[6] != 0) {
-        this->target_temperature = receivedChars[6];
-      }
-
-      if (receivedChars[7] != 0) {
-        this->current_temperature = receivedChars[7];
-      }
-      if (receivedChars[9] == 0x00) {
-        this->mode = climate::CLIMATE_MODE_OFF;
-      } else {
-        this->mode = climate::CLIMATE_MODE_HEAT;
-      }
-      if (receivedChars[11] == 0x01) {
-        this->action = climate::CLIMATE_ACTION_HEATING;
-      } else {
-        this->action = climate::CLIMATE_ACTION_IDLE;
-      }
-      this->publish_state();
     }
   }
+
+
+  // receiveSerialData();
+  // ESP_LOGD(TAG, "loop");
+  // if (newData == true) {
+  //   newData = false;
+
+  //   if (receivedChars[4] == 0xC9) {  // Filtrer ut unødig informasjon
+  //     ESP_LOGD("custom", "receivedChars");
+  //     // for (int element : receivedChars) { // for each element in the array
+  //     // ESP_LOGI("Recivedbytes", "%x", receivedChars[element ]);
+  //     // }
+
+  //     if (receivedChars[6] != 0) {
+  //       this->target_temperature = receivedChars[6];
+  //     }
+
+  //     if (receivedChars[7] != 0) {
+  //       this->current_temperature = receivedChars[7];
+  //     }
+  //     if (receivedChars[9] == 0x00) {
+  //       this->mode = climate::CLIMATE_MODE_OFF;
+  //     } else {
+  //       this->mode = climate::CLIMATE_MODE_HEAT;
+  //     }
+  //     if (receivedChars[11] == 0x01) {
+  //       this->action = climate::CLIMATE_ACTION_HEATING;
+  //     } else {
+  //       this->action = climate::CLIMATE_ACTION_IDLE;
+  //     }
+  //     this->publish_state();
+  //   }
+  //}
 }
 
 ClimateTraits MillGen2::traits() { return traits_; }
@@ -101,34 +117,34 @@ void MillGen2::control(const climate::ClimateCall &call) {
     }
 }
 
-void MillGen2::receiveSerialData() {
-  static bool recvInProgress = false;
-  static char ndx = 0;
-  char startMarker = 0x5A;
-  char endMarker = 0x5B;
-  char lineend = 0x0A;
-  char rc;
+// void MillGen2::receiveSerialData() {
+//   static bool recvInProgress = false;
+//   static char ndx = 0;
+//   char startMarker = 0x5A;
+//   char endMarker = 0x5B;
+//   char lineend = 0x0A;
+//   char rc;
 
-  if (Serial.available() > 0) {
-    ESP_LOGD(TAG, "Receive serial data");
-    rc = Serial.read();
-    if (recvInProgress == true) {
-      if ((rc != endMarker) && (rc != lineend)) {
-        receivedChars[ndx] = (char) rc;
-        ndx++;
-      }
-      else {
-        recvInProgress = false;
-        ndx = 0;
-        newData = true;
-      }
-    }
+//   if (this->available() > 0) {
+//     ESP_LOGD(TAG, "Receive serial data");
+//     rc = this->read_byte; //Serial.read();
+//     if (recvInProgress == true) {
+//       if ((rc != endMarker) && (rc != lineend)) {
+//         receivedChars[ndx] = (char) rc;
+//         ndx++;
+//       }
+//       else {
+//         recvInProgress = false;
+//         ndx = 0;
+//         newData = true;
+//       }
+//     }
 
-    else if (rc == startMarker) {
-      recvInProgress = true;
-    }
-  }
-}
+//     else if (rc == startMarker) {
+//       recvInProgress = true;
+//     }
+//   }
+// }
 
 /*--- Funksjon for summering av kontrollbyte ---*/
 unsigned char MillGen2::calculateChecksum(char *buffer, size_t length) {
