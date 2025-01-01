@@ -26,7 +26,7 @@ MillGen2::MillGen2() {
 MillGen2::~MillGen2() {}
 
 void MillGen2::setup() {
-  ESP_LOGI(TAG, "MillGen2 initialization...");
+  // ESP_LOGI(TAG, "MillGen2 initialization...");
 }
 
 void MillGen2::dump_config() {
