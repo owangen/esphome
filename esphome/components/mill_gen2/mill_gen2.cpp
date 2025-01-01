@@ -1,5 +1,5 @@
 #include "esphome/components/climate/climate.h"
-// #include "esphome/components/uart/uart.h"
+#include "esphome/components/uart/uart.h"
 #include "esphome/core/log.h"
 #include "mill_gen2.h"
 
@@ -18,36 +18,82 @@ char setPower[] = {0x00, 0x10, 0x06, 0x00, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0
 char setTemp[] = {0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00}; 
 
 MillGen2::MillGen2() {
-  // this->traits_ = climate::ClimateTraits();
-  // this->traits_.set_supported_modes({climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT});
-  // this->traits_.set_supports_current_temperature(true);
+  this->traits_ = climate::ClimateTraits();
+  this->traits_.set_supported_modes({climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT});
+  this->traits_.set_supports_current_temperature(true);
 }
 
 MillGen2::~MillGen2() {}
 
 void MillGen2::setup() {
-  // ESP_LOGI(TAG, "MillGen2 initialization...");
+  ESP_LOGI(TAG, "MillGen2 initialization...");
 }
 
 void MillGen2::dump_config() {
+  ESP_LOGCONFIG(TAG, "MillGen2:");
   LOG_CLIMATE("", "MillGen2 Climate", this);
+  this->check_uart_settings(9600);
 }
 
 void MillGen2::loop() {
-uint8_t data;
-  while (this->available() > 0) {
-    if (this->read_byte(&data)) {
-      buffer_ += (char) data;
-      ESP_LOGI("Recivedbytes", "%x", data);
-      ESP_LOGI("Recivedbytes2", "%x", buffer_);
-      // if (this->buffer_.back() == static_cast<char>(ASCII_LF) || this->buffer_.length() >= MAX_DATA_LENGTH_BYTES) {
-      //   // complete line received
-      //   this->process_line_();
-      //   this->buffer_.clear();
-      // }
-    }
+  while (this->available() != 0) {
+    this->read_byte(&this->data_[this->data_index_]);
+    ESP_LOGI(TAG, "Byte %i received data ", this->data_index_);
+    this->data_index_++;
+    // auto check = this->check_byte_();
+    // if (!check.has_value()) {
+    //   // finished
+    //   this->parse_data_();
+    //   this->data_index_ = 0;
+    // } else if (!*check) {
+    //   // wrong data
+    //   ESP_LOGV(TAG, "Byte %i of received data frame is invalid.", this->data_index_);
+    //   this->data_index_ = 0;
+    // } else {
+    //   // next byte
+    //   this->data_index_++;
+    // }
   }
+}
 
+// void MillGen2::receiveSerialData() {
+//   static bool recvInProgress = false;
+//   static char ndx = 0;
+//   char startMarker = 0x5A;
+//   char endMarker = 0x5B;
+//   char lineend = 0x0A;
+//   char rc;
+
+//   if (this->available() > 0) {
+//     ESP_LOGD(TAG, "Receive serial data");
+//     rc = this->read_byte(); //Serial.read();
+//     if (recvInProgress == true) {
+//       if ((rc != endMarker) && (rc != lineend)) {
+//         receivedChars[ndx] = (char) rc;
+//         ndx++;
+//       }
+//       else {
+//         recvInProgress = false;
+//         ndx = 0;
+//         newData = true;
+//       }
+//     }
+
+//     else if (rc == startMarker) {
+//       recvInProgress = true;
+//     }
+//   }
+// }
+
+// /*--- Funksjon for summering av kontrollbyte ---*/
+// unsigned char MillGen2::calculateChecksum(char *buffer, size_t length) {
+
+//   unsigned char chk = 0;
+//   for ( ; length != 0; length--) {
+//     chk += *buffer++;
+//   }
+//   return chk;
+// }
 
   // receiveSerialData();
   // ESP_LOGD(TAG, "loop");
@@ -55,7 +101,7 @@ uint8_t data;
   //   newData = false;
 
   //   if (receivedChars[4] == 0xC9) {  // Filtrer ut unødig informasjon
-  //     ESP_LOGD("custom", "receivedChars");
+  //     ESP_LOGD(TAG, "receivedChars");
   //     // for (int element : receivedChars) { // for each element in the array
   //     // ESP_LOGI("Recivedbytes", "%x", receivedChars[element ]);
   //     // }
@@ -117,44 +163,7 @@ void MillGen2::control(const climate::ClimateCall &call) {
     // }
 }
 
-// void MillGen2::receiveSerialData() {
-//   static bool recvInProgress = false;
-//   static char ndx = 0;
-//   char startMarker = 0x5A;
-//   char endMarker = 0x5B;
-//   char lineend = 0x0A;
-//   char rc;
 
-//   if (this->available() > 0) {
-//     ESP_LOGD(TAG, "Receive serial data");
-//     rc = this->read_byte; //Serial.read();
-//     if (recvInProgress == true) {
-//       if ((rc != endMarker) && (rc != lineend)) {
-//         receivedChars[ndx] = (char) rc;
-//         ndx++;
-//       }
-//       else {
-//         recvInProgress = false;
-//         ndx = 0;
-//         newData = true;
-//       }
-//     }
-
-//     else if (rc == startMarker) {
-//       recvInProgress = true;
-//     }
-//   }
-// }
-
-/*--- Funksjon for summering av kontrollbyte ---*/
-unsigned char MillGen2::calculateChecksum(char *buffer, size_t length) {
-
-  unsigned char chk = 0;
-  for ( ; length != 0; length--) {
-    chk += *buffer++;
-  }
-  return chk;
-}
 /* Seriedata ut til mill mikrokontroller ---*/
 // void MillGen2::sendCommand(char* arrayen, int len, int commando) {
 //   ESP_LOGD(TAG, "Sending serial command");

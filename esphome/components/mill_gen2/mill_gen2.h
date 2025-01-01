@@ -30,7 +30,9 @@ private:
   static constexpr size_t BUFFER_SIZE = 15;
   char receivedChars[BUFFER_SIZE];
   bool newData = false;
-  std::string buffer_;
+
+  uint8_t data_[BUFFER_SIZE];
+  uint8_t data_index_{0};
 
   climate::ClimateTraits traits_;
 
