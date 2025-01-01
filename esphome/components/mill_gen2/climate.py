@@ -1,10 +1,8 @@
-import logging
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import uart, climate
 from esphome.const import (
   CONF_ID,
-  CONF_LOGGER,
   CONF_MAX_TEMPERATURE,
   CONF_MIN_TEMPERATURE,
   CONF_SUPPORTED_MODES,
@@ -15,7 +13,6 @@ from esphome.components.climate import (
     CONF_CURRENT_TEMPERATURE,
 )
 
-_LOGGER = logging.getLogger(__name__)
 
 PROTOCOL_MIN_TEMPERATURE = 16.0
 PROTOCOL_MAX_TEMPERATURE = 30.0

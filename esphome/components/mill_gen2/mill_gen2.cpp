@@ -34,37 +34,36 @@ void MillGen2::dump_config() {
 
 void MillGen2::loop() {
   receiveSerialData();
-      ESP_LOGD("custom", "loop");
-      if (newData == true) {
-        newData = false;    
+  ESP_LOGD(TAG, "loop");
+  if (newData == true) {
+    newData = false;
 
-      if (receivedChars[4] == 0xC9 ) { // Filtrer ut unødig informasjon
-          ESP_LOGD("custom", "receivedChars");
-          //for (int element : receivedChars) { // for each element in the array
-          //ESP_LOGI("Recivedbytes", "%x", receivedChars[element ]);
-          //}
-        
-          if (receivedChars[6] != 0 ) {
-          this->target_temperature= receivedChars[6];
-          }
+    if (receivedChars[4] == 0xC9) {  // Filtrer ut unødig informasjon
+      ESP_LOGD("custom", "receivedChars");
+      // for (int element : receivedChars) { // for each element in the array
+      // ESP_LOGI("Recivedbytes", "%x", receivedChars[element ]);
+      // }
 
-          if (receivedChars[7] != 0 ) {
-            this->current_temperature = receivedChars[7];
-          }
-          if (receivedChars[9] == 0x00 ) {
-          this->mode= climate::CLIMATE_MODE_OFF;
-          } else {
-          this->mode= climate::CLIMATE_MODE_HEAT;
-
-          }
-          if (receivedChars[11] == 0x01) {
-            this->action = climate::CLIMATE_ACTION_HEATING;
-          } else {
-            this->action = climate::CLIMATE_ACTION_IDLE;
-        }
-          this->publish_state();
-    }
+      if (receivedChars[6] != 0) {
+        this->target_temperature = receivedChars[6];
       }
+
+      if (receivedChars[7] != 0) {
+        this->current_temperature = receivedChars[7];
+      }
+      if (receivedChars[9] == 0x00) {
+        this->mode = climate::CLIMATE_MODE_OFF;
+      } else {
+        this->mode = climate::CLIMATE_MODE_HEAT;
+      }
+      if (receivedChars[11] == 0x01) {
+        this->action = climate::CLIMATE_ACTION_HEATING;
+      } else {
+        this->action = climate::CLIMATE_ACTION_IDLE;
+      }
+      this->publish_state();
+    }
+  }
 }
 
 ClimateTraits MillGen2::traits() { return traits_; }
