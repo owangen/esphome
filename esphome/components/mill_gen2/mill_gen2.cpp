@@ -102,8 +102,8 @@ void MillGen2::control(const climate::ClimateCall &call) {
 }
 
 void MillGen2::receiveSerialData() {
-  static boolean recvInProgress = false;
-  static byte ndx = 0;
+  static bool recvInProgress = false;
+  static char ndx = 0;
   char startMarker = 0x5A;
   char endMarker = 0x5B;
   char lineend = 0x0A;
@@ -147,16 +147,16 @@ void MillGen2::sendCommand(char* arrayen, int len, int commando) {
   }
   if (arrayen[4] == 0x47) { // Power av/på
     arrayen[5] = commando;
-    arrayen[len] = (byte)0x00;  // Padding..
+    arrayen[len] = (char)0x00;  // Padding..
   }
   char crc = calculateChecksum(arrayen, len + 1);
   ESP_LOGD(TAG, "writing start byte");
-  Serial.write((byte)0x5A); // Startbyte
+  Serial.write((char)0x5A); // Startbyte
   for (int i = 0; i < len + 1; i++) { // Beskjed
-    Serial.write((byte)arrayen[i]);
+    Serial.write((char)arrayen[i]);
   }
-  Serial.write((byte)crc); // Kontrollbyte
-  Serial.write((byte)0x5B); // Stoppbyte
+  Serial.write((char)crc); // Kontrollbyte
+  Serial.write((char)0x5B); // Stoppbyte
 }
 
 }  // namespace mill_gen2
