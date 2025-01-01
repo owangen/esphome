@@ -1,5 +1,5 @@
 #include "esphome/components/climate/climate.h"
-#include "esphome/components/uart/uart.h"
+// #include "esphome/components/uart/uart.h"
 #include "esphome/core/log.h"
 #include "mill_gen2.h"
 
