@@ -63,22 +63,8 @@ void MillGen2::loop() {
         this->target_temperature = receivedChars[6];
       }
 
-      // Parse current temperature
       if (receivedChars[7] != 0) {
-        // char hexStr[3];
-        // sprintf(hexStr, "%02x%02x", receivedChars[7], receivedChars[6]);
-
-        // // Convert the hexadecimal string to an integer
-        // int hexValue;
-        // sscanf(hexStr, "%x", &hexValue);
-
-        // // Divide by 10 to get the final current_temperature
-        // this->current_temperature = (float)hexValue / 10.0;
-        if (receivedChars[7] != 0) {
-          this->current_temperature = receivedChars[7];
-        }
-          ESP_LOGI(TAG, "Temp: %s", receivedChars[7]);
-          // ESP_LOGI("ReceivedBytes", "Hex: %s, Decimal: %d, Temperature: %.1f", hexStr, hexValue, this->current_temperature);
+        this->current_temperature = receivedChars[7];
       }
 
       // Parse climate mode
