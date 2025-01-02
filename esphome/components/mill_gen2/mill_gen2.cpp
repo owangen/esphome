@@ -102,8 +102,8 @@ void MillGen2::loop() {
 }
 
 void MillGen2::recvWithStartEndMarkers() {
-  static boolean recvInProgress = false;
-  static byte ndx = 0;
+  static bool recvInProgress = false;
+  static char ndx = 0;
   char startMarker = 0x5A;
   char endMarker = 0x5B;
   char lineEndMarker = 0x0A;
