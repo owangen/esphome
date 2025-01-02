@@ -14,8 +14,8 @@ static const char *TAG = "millgen2.climate";
 char receivedChars[15];
 bool newData;
 // mill commandos
-char setPower[] = {0x00, 0x10, 0x06, 0x00, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // Powertoggle er pos 5
-char setTemp[] = {0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00}; 
+char setPower[] = {0x00, 0x10, 0x06, 0x00, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // Powertoggle er pos 5
+char setTemp[] = {0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00};
 
 MillGen2::MillGen2() {
   this->traits_ = climate::ClimateTraits();
@@ -25,9 +25,7 @@ MillGen2::MillGen2() {
 
 MillGen2::~MillGen2() {}
 
-void MillGen2::setup() {
-  ESP_LOGI(TAG, "MillGen2 initialization...");
-}
+void MillGen2::setup() { ESP_LOGI(TAG, "MillGen2 initialization..."); }
 
 void MillGen2::dump_config() {
   ESP_LOGCONFIG(TAG, "MillGen2:");
@@ -36,26 +34,95 @@ void MillGen2::dump_config() {
 }
 
 void MillGen2::loop() {
-  
-  while (this->available() != 0) {
-    this->read_byte(&this->data_[this->data_index_]);
-    ESP_LOGI(TAG, "Byte %i received data ", this->data_index_);
-    uint8_t byte = this->data_[this->data_index_];
-    ESP_LOGI(TAG, "Byte %i received data byte ", byte);
-    this->data_index_++;
-    // auto check = this->check_byte_();
-    // if (!check.has_value()) {
-    //   // finished
-    //   this->parse_data_();
-    //   this->data_index_ = 0;
-    // } else if (!*check) {
-    //   // wrong data
-    //   ESP_LOGV(TAG, "Byte %i of received data frame is invalid.", this->data_index_);
-    //   this->data_index_ = 0;
-    // } else {
-    //   // next byte
-    //   this->data_index_++;
-    // }
+  recvWithStartEndMarkers();
+
+  if (newData == true) {
+    newData = false;
+    if (receivedChars[4] == 0xC9) {  // Filter out unnecessary information
+
+      //     if (receivedChars[6] != 0) {
+      //       this->target_temperature = receivedChars[6];
+      //     }
+
+      //     if (receivedChars[7] != 0) {
+      //       this->current_temperature = receivedChars[7];
+      //     }
+      //     if (receivedChars[9] == 0x00) {
+      //       this->mode = climate::CLIMATE_MODE_OFF;
+      //     } else {
+      //       this->mode = climate::CLIMATE_MODE_HEAT;
+      //     }
+      //     if (receivedChars[11] == 0x01) {
+      //       this->action = climate::CLIMATE_ACTION_HEATING;
+      //     } else {
+      //       this->action = climate::CLIMATE_ACTION_IDLE;
+      //     }
+
+      // Parse target temperature
+      if (receivedChars[6] != 0) {
+        this->target_temperature = receivedChars[6];
+      }
+
+      // Parse current temperature
+      if (receivedChars[7] != 0) {
+        // char hexStr[3];
+        // sprintf(hexStr, "%02x%02x", receivedChars[7], receivedChars[6]);
+
+        // // Convert the hexadecimal string to an integer
+        // int hexValue;
+        // sscanf(hexStr, "%x", &hexValue);
+
+        // // Divide by 10 to get the final current_temperature
+        // this->current_temperature = (float)hexValue / 10.0;
+        if (receivedChars[7] != 0) {
+          this->current_temperature = receivedChars[7];
+        }
+          ESP_LOGI(TAG, "Temp: %i", this->current_temperature);
+          // ESP_LOGI("ReceivedBytes", "Hex: %s, Decimal: %d, Temperature: %.1f", hexStr, hexValue, this->current_temperature);
+      }
+
+      // Parse climate mode
+      if (receivedChars[9] == 0x00) {
+        this->mode = climate::CLIMATE_MODE_OFF;
+        this->action = climate::CLIMATE_ACTION_OFF;
+      } else if (receivedChars[9] == 0x01) {
+        this->mode = climate::CLIMATE_MODE_HEAT;
+      }
+
+      // Parse action
+      if (receivedChars[11] == 0x01) {
+        this->action = climate::CLIMATE_ACTION_HEATING;
+      } else {
+        this->action = climate::CLIMATE_ACTION_IDLE;
+      }
+
+      this->publish_state();
+    }
+  }
+}
+
+void MillGen2::recvWithStartEndMarkers() {
+  static boolean recvInProgress = false;
+  static byte ndx = 0;
+  char startMarker = 0x5A;
+  char endMarker = 0x5B;
+  char lineEndMarker = 0x0A;
+  char rc;
+
+  if (this->available() > 0) {
+    rc = this->read();
+    if (recvInProgress == true) {
+      if ((rc != endMarker) && (rc != lineEndMarker)) {
+        receivedChars[ndx] = (char) rc;
+        ndx++;
+      } else {
+        recvInProgress = false;
+        ndx = 0;
+        newData = true;
+      }
+    } else if (rc == startMarker) {
+      recvInProgress = true;
+    }
   }
 }
 
@@ -98,37 +165,37 @@ void MillGen2::loop() {
 //   return chk;
 // }
 
-  // receiveSerialData();
-  // ESP_LOGD(TAG, "loop");
-  // if (newData == true) {
-  //   newData = false;
+// receiveSerialData();
+// ESP_LOGD(TAG, "loop");
+// if (newData == true) {
+//   newData = false;
 
-  //   if (receivedChars[4] == 0xC9) {  // Filtrer ut unødig informasjon
-  //     ESP_LOGD(TAG, "receivedChars");
-  //     // for (int element : receivedChars) { // for each element in the array
-  //     // ESP_LOGI("Recivedbytes", "%x", receivedChars[element ]);
-  //     // }
+//   if (receivedChars[4] == 0xC9) {  // Filtrer ut unødig informasjon
+//     ESP_LOGD(TAG, "receivedChars");
+//     // for (int element : receivedChars) { // for each element in the array
+//     // ESP_LOGI("Recivedbytes", "%x", receivedChars[element ]);
+//     // }
 
-  //     if (receivedChars[6] != 0) {
-  //       this->target_temperature = receivedChars[6];
-  //     }
+//     if (receivedChars[6] != 0) {
+//       this->target_temperature = receivedChars[6];
+//     }
 
-  //     if (receivedChars[7] != 0) {
-  //       this->current_temperature = receivedChars[7];
-  //     }
-  //     if (receivedChars[9] == 0x00) {
-  //       this->mode = climate::CLIMATE_MODE_OFF;
-  //     } else {
-  //       this->mode = climate::CLIMATE_MODE_HEAT;
-  //     }
-  //     if (receivedChars[11] == 0x01) {
-  //       this->action = climate::CLIMATE_ACTION_HEATING;
-  //     } else {
-  //       this->action = climate::CLIMATE_ACTION_IDLE;
-  //     }
-  //     this->publish_state();
-  //   }
-  //}
+//     if (receivedChars[7] != 0) {
+//       this->current_temperature = receivedChars[7];
+//     }
+//     if (receivedChars[9] == 0x00) {
+//       this->mode = climate::CLIMATE_MODE_OFF;
+//     } else {
+//       this->mode = climate::CLIMATE_MODE_HEAT;
+//     }
+//     if (receivedChars[11] == 0x01) {
+//       this->action = climate::CLIMATE_ACTION_HEATING;
+//     } else {
+//       this->action = climate::CLIMATE_ACTION_IDLE;
+//     }
+//     this->publish_state();
+//   }
+//}
 //}
 
 ClimateTraits MillGen2::traits() { return traits_; }
@@ -136,36 +203,35 @@ ClimateTraits MillGen2::traits() { return traits_; }
 void MillGen2::control(const climate::ClimateCall &call) {
   ESP_LOGD(TAG, "Climate change requested");
 
-    // if (call.get_mode().has_value()) {
+  // if (call.get_mode().has_value()) {
 
-    //     switch (call.get_mode().value()) {
-    //             case CLIMATE_MODE_OFF:
-    //               sendCommand(setPower, sizeof(setPower), 0x00);
-    //                 break;
-    //             case CLIMATE_MODE_HEAT:
-    //               sendCommand(setPower, sizeof(setPower), 0x01);
-    //                 break;
-    //             default:
-    //                 break;
-    //     }
+  //     switch (call.get_mode().value()) {
+  //             case CLIMATE_MODE_OFF:
+  //               sendCommand(setPower, sizeof(setPower), 0x00);
+  //                 break;
+  //             case CLIMATE_MODE_HEAT:
+  //               sendCommand(setPower, sizeof(setPower), 0x01);
+  //                 break;
+  //             default:
+  //                 break;
+  //     }
 
-    //   ClimateMode mode = *call.get_mode();
+  //   ClimateMode mode = *call.get_mode();
 
-    //   this->mode = mode;
-    //   this->publish_state();
-    //     }
+  //   this->mode = mode;
+  //   this->publish_state();
+  //     }
 
-    // if (call.get_target_temperature().has_value()) {
-    //   // User requested target temperature change
-    //   int temp = *call.get_target_temperature();
-    //   sendCommand(setTemp, sizeof(setTemp), temp);
-    //   // ...
-    //   this->target_temperature = temp;
-    //   this->publish_state();
+  // if (call.get_target_temperature().has_value()) {
+  //   // User requested target temperature change
+  //   int temp = *call.get_target_temperature();
+  //   sendCommand(setTemp, sizeof(setTemp), temp);
+  //   // ...
+  //   this->target_temperature = temp;
+  //   this->publish_state();
 
-    // }
+  // }
 }
-
 
 /* Seriedata ut til mill mikrokontroller ---*/
 // void MillGen2::sendCommand(char* arrayen, int len, int commando) {

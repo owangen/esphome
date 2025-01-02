@@ -23,7 +23,7 @@ protected:
   climate::ClimateTraits traits() override;
 
 private:
-  void receiveSerialData();
+  void recvWithStartEndMarkers();
   void sendCommand(char* arrayen, int len, int commando);
   unsigned char calculateChecksum(char *buffer, size_t length);
 
