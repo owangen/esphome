@@ -77,7 +77,7 @@ void MillGen2::loop() {
         if (receivedChars[7] != 0) {
           this->current_temperature = receivedChars[7];
         }
-          ESP_LOGI(TAG, "Temp: %i", this->current_temperature);
+          ESP_LOGI(TAG, "Temp: %s", receivedChars[7]);
           // ESP_LOGI("ReceivedBytes", "Hex: %s, Decimal: %d, Temperature: %.1f", hexStr, hexValue, this->current_temperature);
       }
 
