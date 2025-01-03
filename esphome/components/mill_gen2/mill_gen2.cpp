@@ -19,8 +19,15 @@ char setTemp[] = {0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x06, 0x00, 0x00, 0x
 
 MillGen2::MillGen2() {
   this->traits_ = climate::ClimateTraits();
-  this->traits_.set_supported_modes({climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT});
   this->traits_.set_supports_current_temperature(true);
+  this->traits_.set_supports_two_point_target_temperature(false);
+  this->traits_.set_visual_min_temperature(5);
+  this->traits_.set_visual_max_temperature(35);
+  this->traits_.set_supports_action(true);
+  this->traits_.set_supported_modes({
+      climate::CLIMATE_MODE_OFF,
+      climate::CLIMATE_MODE_HEAT,
+  });
 }
 
 MillGen2::~MillGen2() {}
@@ -40,7 +47,7 @@ void MillGen2::loop() {
     newData = false;
     if (receivedChars[4] == 0xC9) {  // Filter out unnecessary information
       // Parse target temperature
-      if (receivedChars[6] != 0) {  
+      if (receivedChars[6] != 0) {
         this->target_temperature = receivedChars[6];
       }
       // Parse current temperature
@@ -69,7 +76,7 @@ void MillGen2::loop() {
 
 void MillGen2::recvWithStartEndMarkers() {
   static bool recvInProgress = false;
-  static char ndx = 0;
+  static uint8_t ndx = 0;
   char startMarker = 0x5A;
   char endMarker = 0x5B;
   char lineEndMarker = 0x0A;
@@ -91,78 +98,6 @@ void MillGen2::recvWithStartEndMarkers() {
     }
   }
 }
-
-// void MillGen2::receiveSerialData() {
-//   static bool recvInProgress = false;
-//   static char ndx = 0;
-//   char startMarker = 0x5A;
-//   char endMarker = 0x5B;
-//   char lineend = 0x0A;
-//   char rc;
-
-//   if (this->available() > 0) {
-//     ESP_LOGD(TAG, "Receive serial data");
-//     rc = this->read_byte(); //Serial.read();
-//     if (recvInProgress == true) {
-//       if ((rc != endMarker) && (rc != lineend)) {
-//         receivedChars[ndx] = (char) rc;
-//         ndx++;
-//       }
-//       else {
-//         recvInProgress = false;
-//         ndx = 0;
-//         newData = true;
-//       }
-//     }
-
-//     else if (rc == startMarker) {
-//       recvInProgress = true;
-//     }
-//   }
-// }
-
-// /*--- Funksjon for summering av kontrollbyte ---*/
-// unsigned char MillGen2::calculateChecksum(char *buffer, size_t length) {
-
-//   unsigned char chk = 0;
-//   for ( ; length != 0; length--) {
-//     chk += *buffer++;
-//   }
-//   return chk;
-// }
-
-// receiveSerialData();
-// ESP_LOGD(TAG, "loop");
-// if (newData == true) {
-//   newData = false;
-
-//   if (receivedChars[4] == 0xC9) {  // Filtrer ut unødig informasjon
-//     ESP_LOGD(TAG, "receivedChars");
-//     // for (int element : receivedChars) { // for each element in the array
-//     // ESP_LOGI("Recivedbytes", "%x", receivedChars[element ]);
-//     // }
-
-//     if (receivedChars[6] != 0) {
-//       this->target_temperature = receivedChars[6];
-//     }
-
-//     if (receivedChars[7] != 0) {
-//       this->current_temperature = receivedChars[7];
-//     }
-//     if (receivedChars[9] == 0x00) {
-//       this->mode = climate::CLIMATE_MODE_OFF;
-//     } else {
-//       this->mode = climate::CLIMATE_MODE_HEAT;
-//     }
-//     if (receivedChars[11] == 0x01) {
-//       this->action = climate::CLIMATE_ACTION_HEATING;
-//     } else {
-//       this->action = climate::CLIMATE_ACTION_IDLE;
-//     }
-//     this->publish_state();
-//   }
-//}
-//}
 
 ClimateTraits MillGen2::traits() { return traits_; }
 
