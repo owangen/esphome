@@ -75,29 +75,61 @@ void MillGen2::loop() {
 }
 
 void MillGen2::recvWithStartEndMarkers() {
-  static bool recvInProgress = false;
-  static uint8_t ndx = 0;
-  char startMarker = 0x5A;
-  char endMarker = 0x5B;
-  char lineEndMarker = 0x0A;
-  char rc;
+    static bool recvInProgress = false;
+    static uint8_t ndx = 0;
+    const char START_MARKER = 0x5A;
+    const char END_MARKER = 0x5B;
+    const char LINE_END_MARKER = 0x0A;
+    char rc;
 
-  if (this->available() > 0) {
-    rc = this->read();
-    if (recvInProgress == true) {
-      if ((rc != endMarker) && (rc != lineEndMarker)) {
-        receivedChars[ndx] = (char) rc;
-        ndx++;
-      } else {
-        recvInProgress = false;
-        ndx = 0;
-        newData = true;
-      }
-    } else if (rc == startMarker) {
-      recvInProgress = true;
+    while (this->available() > 0) {
+        rc = this->read();
+
+        if (recvInProgress) {
+            if (rc == END_MARKER || rc == LINE_END_MARKER) {
+                recvInProgress = false;
+                ndx = 0;
+                newData = true;
+                ESP_LOGD(TAG, "Data received: %s", receivedChars);
+            } else {
+                if (ndx < BUFFER_SIZE - 1) {
+                    receivedChars[ndx++] = rc;
+                } else {
+                    ESP_LOGW(TAG, "Buffer overflow, resetting.");
+                    recvInProgress = false;
+                    ndx = 0;
+                }
+            }
+        } else if (rc == START_MARKER) {
+            recvInProgress = true;
+        }
     }
-  }
 }
+
+// void MillGen2::recvWithStartEndMarkers() {
+//   static bool recvInProgress = false;
+//   static uint8_t ndx = 0;
+//   char startMarker = 0x5A;
+//   char endMarker = 0x5B;
+//   char lineEndMarker = 0x0A;
+//   char rc;
+
+//   if (this->available() > 0) {
+//     rc = this->read();
+//     if (recvInProgress) {
+//       if ((rc != endMarker) && (rc != lineEndMarker)) {
+//         receivedChars[ndx] = (char) rc;
+//         ndx++;
+//       } else {
+//         recvInProgress = false;
+//         ndx = 0;
+//         newData = true;
+//       }
+//     } else if (rc == startMarker) {
+//       recvInProgress = true;
+//     }
+//   }
+// }
 
 ClimateTraits MillGen2::traits() { return traits_; }
 
