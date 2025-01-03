@@ -40,30 +40,15 @@ void MillGen2::loop() {
     newData = false;
     if (receivedChars[4] == 0xC9) {  // Filter out unnecessary information
 
-      //     if (receivedChars[6] != 0) {
-      //       this->target_temperature = receivedChars[6];
-      //     }
-
-      //     if (receivedChars[7] != 0) {
-      //       this->current_temperature = receivedChars[7];
-      //     }
-      //     if (receivedChars[9] == 0x00) {
-      //       this->mode = climate::CLIMATE_MODE_OFF;
-      //     } else {
-      //       this->mode = climate::CLIMATE_MODE_HEAT;
-      //     }
-      //     if (receivedChars[11] == 0x01) {
-      //       this->action = climate::CLIMATE_ACTION_HEATING;
-      //     } else {
-      //       this->action = climate::CLIMATE_ACTION_IDLE;
-      //     }
-
       // Parse target temperature
       if (receivedChars[6] != 0) {
+        ESP_LOGD("Target temp", "%x", receivedChars[6]);
         this->target_temperature = receivedChars[6];
       }
 
+      // Parse current temperature
       if (receivedChars[7] != 0) {
+        ESP_LOGD("Current temp", "%x", receivedChars[6]);
         this->current_temperature = receivedChars[7];
       }
 
