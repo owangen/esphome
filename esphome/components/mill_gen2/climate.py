@@ -28,23 +28,15 @@ MillHeater = mill_gen2_ns.class_("MillGen2", uart.UARTDevice, climate.Climate, c
 
 CONF_MILL_ID = "mill_id"
 
-SUPPORTED_CLIMATE_MODES_OPTIONS = {
-    "OFF": ClimateMode.CLIMATE_MODE_OFF,  # always available
-    "HEAT": ClimateMode.CLIMATE_MODE_HEAT,
-}
-
-
 CONFIG_SCHEMA = cv.All(
   climate.CLIMATE_SCHEMA.extend(
     {
       cv.GenerateID(): cv.declare_id(MillHeater),
-      cv.Optional(CONF_SUPPORTED_MODES): cv.ensure_list(cv.enum(SUPPORTED_CLIMATE_MODES_OPTIONS, upper=True)),
     }
   )
   .extend(uart.UART_DEVICE_SCHEMA)
   .extend(cv.COMPONENT_SCHEMA)
 )
-
 
 async def to_code(config):
   var = cg.new_Pvariable(config[CONF_ID])
