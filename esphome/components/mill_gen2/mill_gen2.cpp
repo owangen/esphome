@@ -45,6 +45,10 @@ void MillGen2::loop() {
       ESP_LOGD("Heat on or off", "%x", receivedChars[9]);
       ESP_LOGD("Pos 10?", "%x", receivedChars[10]);
       ESP_LOGD("Heating or not", "%x", receivedChars[11]);
+      ESP_LOGD("receivedChar length", "%x", sizeof(receivedChars));
+      int al = sizeof(receivedChars)/sizeof(receivedChars[0]); //length calculation
+      ESP_LOGD("receivedChar length2", "%x", al);
+
       // Parse target temperature
       if (receivedChars[6] != 0) {  
         this->target_temperature = receivedChars[6];
