@@ -39,16 +39,19 @@ void MillGen2::loop() {
   if (newData == true) {
     newData = false;
     if (receivedChars[4] == 0xC9) {  // Filter out unnecessary information
-
+      ESP_LOGD("Target temp", "%x", receivedChars[6]);
+      ESP_LOGD("Current temp", "%x", receivedChars[7]);
+      ESP_LOGD("Pos 8?", "%x", receivedChars[8]);
+      ESP_LOGD("Heat on or off", "%x", receivedChars[9]);
+      ESP_LOGD("Pos 10?", "%x", receivedChars[10]);
+      ESP_LOGD("Heating or not", "%x", receivedChars[11]);
       // Parse target temperature
-      if (receivedChars[6] != 0) {
-        ESP_LOGD("Target temp", "%x", receivedChars[6]);
+      if (receivedChars[6] != 0) {  
         this->target_temperature = receivedChars[6];
       }
 
       // Parse current temperature
       if (receivedChars[7] != 0) {
-        ESP_LOGD("Current temp", "%x", receivedChars[6]);
         this->current_temperature = receivedChars[7];
       }
 

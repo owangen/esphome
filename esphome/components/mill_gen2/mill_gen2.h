@@ -7,11 +7,8 @@
 namespace esphome {
 namespace mill_gen2 {
 
-class MillGen2 :  public Component,
-                  public climate::Climate,
-                  public uart::UARTDevice {
-
-public:
+class MillGen2 : public Component, public climate::Climate, public uart::UARTDevice {
+ public:
   MillGen2();
   ~MillGen2();
   void setup() override;
@@ -19,12 +16,12 @@ public:
   void control(const climate::ClimateCall &call) override;
   void dump_config() override;
 
-protected:
+ protected:
   climate::ClimateTraits traits() override;
 
-private:
+ private:
   void recvWithStartEndMarkers();
-  void sendCommand(char* arrayen, int len, int commando);
+  void sendCommand(char *arrayen, int len, int commando);
   unsigned char calculateChecksum(char *buffer, size_t length);
 
   static constexpr size_t BUFFER_SIZE = 15;
