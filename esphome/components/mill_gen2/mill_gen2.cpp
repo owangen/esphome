@@ -39,15 +39,22 @@ void MillGen2::loop() {
   if (newData == true) {
     newData = false;
     if (receivedChars[4] == 0xC9) {  // Filter out unnecessary information
+      ESP_LOGD("Pos 0?", "%x", receivedChars[0]);
+      ESP_LOGD("Pos 1?", "%x", receivedChars[1]);
+      ESP_LOGD("Pos 2?", "%x", receivedChars[2]);
+      ESP_LOGD("Pos 3?", "%x", receivedChars[3]);
+      ESP_LOGD("Pos 4?", "%x", receivedChars[4]);
+      ESP_LOGD("Pos 5?", "%x", receivedChars[5]);
       ESP_LOGD("Target temp", "%x", receivedChars[6]);
       ESP_LOGD("Current temp", "%x", receivedChars[7]);
       ESP_LOGD("Pos 8?", "%x", receivedChars[8]);
       ESP_LOGD("Heat on or off", "%x", receivedChars[9]);
       ESP_LOGD("Pos 10?", "%x", receivedChars[10]);
       ESP_LOGD("Heating or not", "%x", receivedChars[11]);
-      ESP_LOGD("receivedChar length", "%x", sizeof(receivedChars));
-      int al = sizeof(receivedChars)/sizeof(receivedChars[0]); //length calculation
-      ESP_LOGD("receivedChar length2", "%x", al);
+      ESP_LOGD("Pos 12?", "%x", receivedChars[12]);
+      ESP_LOGD("Pos 13?", "%x", receivedChars[13]);
+      ESP_LOGD("Pos 14?", "%x", receivedChars[14]);
+      
 
       // Parse target temperature
       if (receivedChars[6] != 0) {  
