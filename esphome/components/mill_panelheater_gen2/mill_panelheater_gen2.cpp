@@ -21,7 +21,7 @@ MillPanelHeaterGen2::MillPanelHeaterGen2() {
   this->traits_ = climate::ClimateTraits();
   this->traits_.set_visual_target_temperature_step(1);
   this->traits_.set_visual_current_temperature_step(1);
-  this->traits_.set_visual_min_temperature(5);
+  this->traits_.set_visual_min_temperature(3);
   this->traits_.set_visual_max_temperature(35);
   this->traits_.set_supports_current_temperature(true);
   this->traits_.set_supports_two_point_target_temperature(false);
