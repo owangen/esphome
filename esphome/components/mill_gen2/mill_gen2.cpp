@@ -19,12 +19,12 @@ char setTemp[] = {0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x06, 0x00, 0x00, 0x
 
 MillGen2::MillGen2() {
   this->traits_ = climate::ClimateTraits();
-  this->traits_.set_supports_current_temperature(true);
-  this->traits_.set_supports_two_point_target_temperature(false);
   this->traits_.set_visual_target_temperature_step(1);
   this->traits_.set_visual_current_temperature_step(1);
   this->traits_.set_visual_min_temperature(5);
   this->traits_.set_visual_max_temperature(35);
+  this->traits_.set_supports_current_temperature(true);
+  this->traits_.set_supports_two_point_target_temperature(false);
   this->traits_.set_supports_action(true);
   this->traits_.set_supported_modes({
       climate::CLIMATE_MODE_OFF,
@@ -57,7 +57,7 @@ void MillGen2::loop() {
         this->current_temperature = receivedChars[7];
       }
       // Parse climate mode
-      //TODO bruke TARGET_TEMP_POS istede
+      // TODO bruke TARGET_TEMP_POS istede
       if (receivedChars[9] == 0x00) {
         this->mode = climate::CLIMATE_MODE_OFF;
         this->action = climate::CLIMATE_ACTION_OFF;
@@ -66,11 +66,7 @@ void MillGen2::loop() {
       }
 
       // Parse action
-      if (receivedChars[11] == 0x00) {
-        this->action = climate::CLIMATE_ACTION_IDLE;
-      } else {
-        this->action = climate::CLIMATE_ACTION_HEATING;
-      }
+      this->action = (receivedChars[11] == 0x00) ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
 
       this->publish_state();
     }
@@ -110,27 +106,26 @@ void MillGen2::control(const climate::ClimateCall &call) {
   if (call.get_mode().has_value()) {
     switch (call.get_mode().value()) {
       case CLIMATE_MODE_OFF:
-        //               sendCommand(setPower, sizeof(setPower), 0x00);
+        sendCommand(setPower, sizeof(setPower), 0x00);
         break;
       case CLIMATE_MODE_HEAT:
-        //               sendCommand(setPower, sizeof(setPower), 0x01);
+        sendCommand(setPower, sizeof(setPower), 0x01);
         break;
       default:
         break;
     }
 
-    //   ClimateMode mode = *call.get_mode();
-
-    //   this->mode = mode;
-    //   this->publish_state();
+    ClimateMode mode = *call.get_mode();
+    this->mode = mode;
+    this->publish_state();
   }
 
   if (call.get_target_temperature().has_value()) {
     // User requested target temperature change
-    //   int temp = *call.get_target_temperature();
-    //   sendCommand(setTemp, sizeof(setTemp), temp);
-    //   this->target_temperature = temp;
-    //   this->publish_state();
+    int temp = *call.get_target_temperature();
+    sendCommand(setTemp, sizeof(setTemp), temp);
+    this->target_temperature = temp;
+    this->publish_state();
   }
 }
 
