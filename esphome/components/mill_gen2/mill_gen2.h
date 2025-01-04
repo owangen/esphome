@@ -21,15 +21,12 @@ class MillGen2 : public Component, public climate::Climate, public uart::UARTDev
 
  private:
   void recvWithStartEndMarkers();
-  void sendCommand(char *arrayen, int len, int commando);
-  unsigned char calculateChecksum(char *buffer, size_t length);
+  void sendCommand(char *commandArray, int len, int command);
+  unsigned char checksum(char *buf, int len);
 
   static constexpr size_t BUFFER_SIZE = 15;
   char receivedChars[BUFFER_SIZE];
   bool newData = false;
-
-  uint8_t data_[BUFFER_SIZE];
-  uint8_t data_index_{0};
 
   climate::ClimateTraits traits_;
 
