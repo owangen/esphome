@@ -45,7 +45,7 @@ void MillPanelHeaterGen2::dump_config() {
 void MillPanelHeaterGen2::loop() {
   recvWithStartEndMarkers();
 
-  if (newData == true) {
+  if (newData) {
     newData = false;
     if (receivedChars[COMMAND_TYPE_POS] == 0xC9) {  // Filter out unnecessary information
       // Parse target temperature
@@ -134,16 +134,16 @@ void MillPanelHeaterGen2::sendCommand(char *commandArray, int len, int command) 
   }
   if (commandArray[4] == 0x47) {  // Power on/off
     commandArray[5] = command;
-    commandArray[len] = (char) 0x00;  // Padding
+    commandArray[len] = 0x00;  // Padding
   }
   char crc = checksum(commandArray, len + 1);
   ESP_LOGD(TAG, "Writing start byte");
-  write((char) START_MARKER);                  // Start byte
+  write(START_MARKER);                  // Start byte
   for (int i = 0; i < len + 1; i++) {  // Message
-    write((char) commandArray[i]);
+    write(commandArray[i]);
   }
-  write((char) crc);   // Control byte
-  write((char) END_MARKER);  // Stop byte
+  write(crc);   // Control byte
+  write(END_MARKER);  // Stop byte
 }
 
 /*--- Function for calculating control byte checksum ---*/
