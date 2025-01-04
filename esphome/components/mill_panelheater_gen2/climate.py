@@ -23,8 +23,8 @@ CODEOWNERS = ["@owangen"]
 
 DEPENDENCIES = ["climate", "uart"]
 
-mill_gen2_ns = cg.esphome_ns.namespace("mill_gen2")
-MillHeater = mill_gen2_ns.class_("MillGen2", uart.UARTDevice, climate.Climate, cg.Component)
+mill_panelheater_gen2_ns = cg.esphome_ns.namespace("mill_panelheater_gen2")
+MillHeater = mill_panelheater_gen2_ns.class_("MillPanelHeaterGen2", uart.UARTDevice, climate.Climate, cg.Component)
 
 CONF_MILL_ID = "mill_id"
 

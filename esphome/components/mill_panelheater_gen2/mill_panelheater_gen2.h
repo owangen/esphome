@@ -5,12 +5,12 @@
 #include "esphome/components/climate/climate.h"
 
 namespace esphome {
-namespace mill_gen2 {
+namespace mill_panelheater_gen2 {
 
-class MillGen2 : public Component, public climate::Climate, public uart::UARTDevice {
+class MillPanelHeaterGen2 : public Component, public climate::Climate, public uart::UARTDevice {
  public:
-  MillGen2();
-  ~MillGen2();
+  MillPanelHeaterGen2();
+  ~MillPanelHeaterGen2();
   void setup() override;
   void loop() override;
   void control(const climate::ClimateCall &call) override;
@@ -44,5 +44,5 @@ class MillGen2 : public Component, public climate::Climate, public uart::UARTDev
   char temperatureCommand[12] = {0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00};
 };
 
-}  // namespace mill_gen2
+}  // namespace mill_panelheater_gen2
 }  // namespace esphome
