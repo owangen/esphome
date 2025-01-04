@@ -47,26 +47,26 @@ void MillGen2::loop() {
 
   if (newData == true) {
     newData = false;
-    if (receivedChars[4] == 0xC9) {  // Filter out unnecessary information
+    if (receivedChars[COMMAND_TYPE_POS] == 0xC9) {  // Filter out unnecessary information
       // Parse target temperature
-      if (receivedChars[6] != 0) {
+      if (receivedChars[TARGET_TEMP_POS] != 0) {
         this->target_temperature = receivedChars[6];
       }
       // Parse current temperature
-      if (receivedChars[7] != 0) {
+      if (receivedChars[CURRENT_TEMP_POS] != 0) {
         this->current_temperature = receivedChars[7];
       }
       // Parse climate mode
       // TODO bruke TARGET_TEMP_POS istede
-      if (receivedChars[9] == 0x00) {
+      if (receivedChars[MODE_POS] == 0x00) {
         this->mode = climate::CLIMATE_MODE_OFF;
         this->action = climate::CLIMATE_ACTION_OFF;
-      } else if (receivedChars[9] == 0x01) {
+      } else if (receivedChars[MODE_POS] == 0x01) {
         this->mode = climate::CLIMATE_MODE_HEAT;
       }
 
       // Parse action
-      this->action = (receivedChars[11] == 0x00) ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
+      this->action = (receivedChars[ACTION_POS] == 0x00) ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
 
       this->publish_state();
     }
@@ -76,9 +76,7 @@ void MillGen2::loop() {
 void MillGen2::recvWithStartEndMarkers() {
   static bool recvInProgress = false;
   static uint8_t ndx = 0;
-  const char START_MARKER = 0x5A;
-  const char END_MARKER = 0x5B;
-  const char LINE_END_MARKER = 0x0A;
+
   char rc;
 
   if (this->available() > 0) {
@@ -141,12 +139,12 @@ void MillGen2::sendCommand(char *commandArray, int len, int command) {
   }
   char crc = checksum(commandArray, len + 1);
   ESP_LOGD(TAG, "writing start byte");
-  write((char) 0x5A);                  // Start byte
+  write((char) START_MARKER);                  // Start byte
   for (int i = 0; i < len + 1; i++) {  // Message
     write((char) commandArray[i]);
   }
   write((char) crc);   // Control byte
-  write((char) 0x5B);  // Stop byte
+  write((char) END_MARKER);  // Stop byte
 }
 
 /*--- Function for calculating control byte checksum ---*/

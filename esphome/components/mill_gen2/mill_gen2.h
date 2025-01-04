@@ -36,6 +36,10 @@ class MillGen2 : public Component, public climate::Climate, public uart::UARTDev
   static constexpr size_t MODE_POS = 9;
   static constexpr size_t ACTION_POS = 11;
 
+  static constexpr char START_MARKER = 0x5A;
+  static constexpr char END_MARKER = 0x5B;
+  static constexpr char LINE_END_MARKER = 0x0A;
+
   char powerCommand[12] = {0x00, 0x10, 0x06, 0x00, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
   char temperatureCommand[12] = {0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00};
 };
