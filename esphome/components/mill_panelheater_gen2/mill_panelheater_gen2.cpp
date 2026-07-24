@@ -34,11 +34,14 @@ void MillPanelHeaterGen2::loop() {
   this->new_data_ = false;
 
   if (this->received_length_ <= ACTION_POS) {
-    ESP_LOGW(TAG, "Received frame is too short: %u bytes", static_cast<unsigned>(this->received_length_));
+    ESP_LOGW(TAG, "Rejecting frame: payload is too short (%u bytes; need at least %u bytes through ACTION_POS)",
+             static_cast<unsigned>(this->received_length_), static_cast<unsigned>(ACTION_POS + 1));
     return;
   }
 
   if (this->received_data_[COMMAND_TYPE_POS] != STATUS_COMMAND_TYPE) {
+    ESP_LOGD(TAG, "Ignoring frame: type 0x%02X is not status type 0x%02X", this->received_data_[COMMAND_TYPE_POS],
+             STATUS_COMMAND_TYPE);
     return;
   }
 
@@ -58,6 +61,14 @@ void MillPanelHeaterGen2::loop() {
 
   this->action =
       this->received_data_[ACTION_POS] == 0x00 ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
+  ESP_LOGD(TAG,
+           "C9 fields: TARGET_TEMP_POS=0x%02X (%u), CURRENT_TEMP_POS=0x%02X (%u), MODE_POS=0x%02X, "
+           "ACTION_POS=0x%02X; result: target_temperature=%.1f, current_temperature=%.1f, mode=%s, action=%s",
+           this->received_data_[TARGET_TEMP_POS], this->received_data_[TARGET_TEMP_POS],
+           this->received_data_[CURRENT_TEMP_POS], this->received_data_[CURRENT_TEMP_POS],
+           this->received_data_[MODE_POS], this->received_data_[ACTION_POS], this->target_temperature,
+           this->current_temperature, LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
+           LOG_STR_ARG(climate::climate_action_to_string(this->action)));
   this->publish_state();
 }
 
@@ -80,13 +91,16 @@ void MillPanelHeaterGen2::receive_byte_() {
   }
 
   if (byte == END_MARKER || byte == LINE_END_MARKER) {
+    this->log_frame_("Received complete frame", byte);
     this->receive_in_progress_ = false;
     this->new_data_ = true;
     return;
   }
 
   if (this->received_length_ >= this->received_data_.size()) {
-    ESP_LOGW(TAG, "Received frame exceeds buffer size; discarding it");
+    this->log_frame_("Rejecting overlong frame", byte);
+    ESP_LOGW(TAG, "Rejecting frame: payload exceeds %u-byte receive buffer; overflow byte is 0x%02X",
+             static_cast<unsigned>(this->received_data_.size()), byte);
     this->receive_in_progress_ = false;
     this->received_length_ = 0;
     this->new_data_ = false;
@@ -94,6 +108,26 @@ void MillPanelHeaterGen2::receive_byte_() {
   }
 
   this->received_data_[this->received_length_++] = byte;
+}
+
+void MillPanelHeaterGen2::log_frame_(const char *message, uint8_t final_byte) const {
+  std::array<uint8_t, RECEIVE_BUFFER_SIZE + 2> frame{};
+  size_t frame_length = 0;
+  frame[frame_length++] = START_MARKER;
+  for (size_t i = 0; i < this->received_length_; i++) {
+    frame[frame_length++] = this->received_data_[i];
+  }
+  frame[frame_length++] = final_byte;
+
+  if (this->received_length_ > COMMAND_TYPE_POS) {
+    ESP_LOGD(TAG, "%s: bytes=%s, length=%u, payload_length=%u, type=0x%02X, final_byte=0x%02X", message,
+             format_hex_pretty(frame.data(), frame_length).c_str(), static_cast<unsigned>(frame_length),
+             static_cast<unsigned>(this->received_length_), this->received_data_[COMMAND_TYPE_POS], final_byte);
+  } else {
+    ESP_LOGD(TAG, "%s: bytes=%s, length=%u, payload_length=%u, type=unavailable, final_byte=0x%02X", message,
+             format_hex_pretty(frame.data(), frame_length).c_str(), static_cast<unsigned>(frame_length),
+             static_cast<unsigned>(this->received_length_), final_byte);
+  }
 }
 
 climate::ClimateTraits MillPanelHeaterGen2::traits() {

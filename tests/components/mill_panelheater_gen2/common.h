@@ -3,6 +3,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <vector>
 
@@ -14,13 +15,22 @@ namespace esphome::mill_panelheater_gen2::testing {
 class MockUARTComponent : public uart::UARTComponent {
  public:
   std::vector<uint8_t> tx;
+  std::vector<uint8_t> rx;
+  size_t rx_position{0};
 
   void write_array(const uint8_t *data, size_t length) override {
     this->tx.insert(this->tx.end(), data, data + length);
   }
 
-  bool read_array(uint8_t *data, size_t length) override { return false; }
-  size_t available() override { return 0; }
+  bool read_array(uint8_t *data, size_t length) override {
+    if (length > this->rx.size() - this->rx_position) {
+      return false;
+    }
+    std::copy_n(this->rx.begin() + this->rx_position, length, data);
+    this->rx_position += length;
+    return true;
+  }
+  int available() override { return static_cast<int>(this->rx.size() - this->rx_position); }
 
   MOCK_METHOD(bool, peek_byte, (uint8_t * data), (override));
   MOCK_METHOD(uart::UARTFlushResult, flush, (), (override));

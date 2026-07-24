@@ -25,6 +25,7 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
 
  private:
   void receive_byte_();
+  void log_frame_(const char *message, uint8_t final_byte) const;
   void send_command_(std::array<uint8_t, 13> payload, size_t command_position, uint8_t command);
   static uint8_t checksum_(const uint8_t *data, size_t length);
 
