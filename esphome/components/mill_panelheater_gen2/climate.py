@@ -1,39 +1,35 @@
 import esphome.codegen as cg
+from esphome.components import climate, uart
 import esphome.config_validation as cv
-from esphome.components import uart, climate
-from esphome.const import (
-  CONF_ID,
-  CONF_MAX_TEMPERATURE,
-  CONF_MIN_TEMPERATURE,
-  CONF_SUPPORTED_MODES,
-)
-
-from esphome.components.climate import (
-    ClimateMode,
-    CONF_CURRENT_TEMPERATURE,
-)
 
 CODEOWNERS = ["@owangen"]
 
-DEPENDENCIES = ["climate", "uart"]
+DEPENDENCIES = ["uart"]
+AUTO_LOAD = ["climate"]
 
 mill_panelheater_gen2_ns = cg.esphome_ns.namespace("mill_panelheater_gen2")
-MillHeater = mill_panelheater_gen2_ns.class_("MillPanelHeaterGen2", uart.UARTDevice, climate.Climate, cg.Component)
-
-CONF_MILL_ID = "mill_id"
-
-CONFIG_SCHEMA = cv.All(
-  climate.CLIMATE_SCHEMA.extend(
-    {
-      cv.GenerateID(): cv.declare_id(MillHeater),
-    }
-  )
-  .extend(uart.UART_DEVICE_SCHEMA)
-  .extend(cv.COMPONENT_SCHEMA)
+MillPanelHeaterGen2 = mill_panelheater_gen2_ns.class_(
+    "MillPanelHeaterGen2", climate.Climate, cg.Component, uart.UARTDevice
 )
 
+CONFIG_SCHEMA = (
+    climate.climate_schema(MillPanelHeaterGen2)
+    .extend(uart.UART_DEVICE_SCHEMA)
+    .extend(cv.COMPONENT_SCHEMA)
+)
+
+FINAL_VALIDATE_SCHEMA = uart.final_validate_device_schema(
+    "mill_panelheater_gen2",
+    baud_rate=9600,
+    require_rx=True,
+    require_tx=True,
+    data_bits=8,
+    parity="NONE",
+    stop_bits=1,
+)
+
+
 async def to_code(config):
-  var = cg.new_Pvariable(config[CONF_ID])
-  await cg.register_component(var, config)
-  await uart.register_uart_device(var, config)
-  await climate.register_climate(var, config)
+    var = await climate.new_climate(config)
+    await cg.register_component(var, config)
+    await uart.register_uart_device(var, config)
