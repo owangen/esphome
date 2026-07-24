@@ -45,11 +45,6 @@ void MillPanelHeaterGen2::loop() {
     return;
   }
 
-  if (this->received_data_[TARGET_TEMP_POS] != 0) {
-    ESP_LOGD(TAG, "target_temperature update [C9 status frame]: old=%.1f, new=%.1f", this->target_temperature,
-             static_cast<float>(this->received_data_[TARGET_TEMP_POS]));
-    this->target_temperature = this->received_data_[TARGET_TEMP_POS];
-  }
   if (this->received_data_[CURRENT_TEMP_POS] != 0) {
     this->current_temperature = this->received_data_[CURRENT_TEMP_POS];
   }
@@ -64,12 +59,12 @@ void MillPanelHeaterGen2::loop() {
   this->action =
       this->received_data_[ACTION_POS] == 0x00 ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
   ESP_LOGD(TAG,
-           "C9 fields: TARGET_TEMP_POS=0x%02X (%u), CURRENT_TEMP_POS=0x%02X (%u), MODE_POS=0x%02X, "
+           "C9 fields: UNKNOWN_POS=0x%02X (%u), CURRENT_TEMP_POS=0x%02X (%u), MODE_POS=0x%02X, "
            "ACTION_POS=0x%02X; result: target_temperature=%.1f, current_temperature=%.1f, mode=%s, action=%s",
-           this->received_data_[TARGET_TEMP_POS], this->received_data_[TARGET_TEMP_POS],
-           this->received_data_[CURRENT_TEMP_POS], this->received_data_[CURRENT_TEMP_POS],
-           this->received_data_[MODE_POS], this->received_data_[ACTION_POS], this->target_temperature,
-           this->current_temperature, LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
+           this->received_data_[UNKNOWN_POS], this->received_data_[UNKNOWN_POS], this->received_data_[CURRENT_TEMP_POS],
+           this->received_data_[CURRENT_TEMP_POS], this->received_data_[MODE_POS], this->received_data_[ACTION_POS],
+           this->target_temperature, this->current_temperature,
+           LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
            LOG_STR_ARG(climate::climate_action_to_string(this->action)));
   ESP_LOGD(
       TAG, "publish_state() [C9 status frame]: target_temperature=%.1f, current_temperature=%.1f, mode=%s, action=%s",

@@ -33,7 +33,7 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
   static constexpr size_t COMMAND_PAYLOAD_SIZE = 13;
 
   static constexpr size_t COMMAND_TYPE_POS = 4;
-  static constexpr size_t TARGET_TEMP_POS = 6;
+  static constexpr size_t UNKNOWN_POS = 6;
   static constexpr size_t CURRENT_TEMP_POS = 7;
   static constexpr size_t MODE_POS = 9;
   static constexpr size_t ACTION_POS = 11;
