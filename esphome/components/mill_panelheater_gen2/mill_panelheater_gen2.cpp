@@ -46,6 +46,8 @@ void MillPanelHeaterGen2::loop() {
   }
 
   if (this->received_data_[TARGET_TEMP_POS] != 0) {
+    ESP_LOGD(TAG, "target_temperature update [C9 status frame]: old=%.1f, new=%.1f", this->target_temperature,
+             static_cast<float>(this->received_data_[TARGET_TEMP_POS]));
     this->target_temperature = this->received_data_[TARGET_TEMP_POS];
   }
   if (this->received_data_[CURRENT_TEMP_POS] != 0) {
@@ -69,6 +71,10 @@ void MillPanelHeaterGen2::loop() {
            this->received_data_[MODE_POS], this->received_data_[ACTION_POS], this->target_temperature,
            this->current_temperature, LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
            LOG_STR_ARG(climate::climate_action_to_string(this->action)));
+  ESP_LOGD(
+      TAG, "publish_state() [C9 status frame]: target_temperature=%.1f, current_temperature=%.1f, mode=%s, action=%s",
+      this->target_temperature, this->current_temperature, LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
+      LOG_STR_ARG(climate::climate_action_to_string(this->action)));
   this->publish_state();
 }
 
@@ -81,6 +87,9 @@ void MillPanelHeaterGen2::receive_byte_() {
   if (!this->read_byte(&byte)) {
     return;
   }
+
+  ESP_LOGVV(TAG, "RX byte: byte=0x%02X, receive_in_progress=%s, buffer_length=%u", byte,
+            YESNO(this->receive_in_progress_), static_cast<unsigned>(this->received_length_));
 
   if (!this->receive_in_progress_) {
     if (byte == START_MARKER) {
@@ -145,7 +154,16 @@ climate::ClimateTraits MillPanelHeaterGen2::traits() {
 }
 
 void MillPanelHeaterGen2::control(const climate::ClimateCall &call) {
-  ESP_LOGD(TAG, "Climate change requested");
+  const auto requested_mode = call.get_mode();
+  const auto requested_target_temperature = call.get_target_temperature();
+  ESP_LOGD(TAG, "control() called: mode_set=%s, target_temperature_set=%s", YESNO(requested_mode.has_value()),
+           YESNO(requested_target_temperature.has_value()));
+  if (requested_mode.has_value()) {
+    ESP_LOGD(TAG, "control() requested mode=%s", LOG_STR_ARG(climate::climate_mode_to_string(*requested_mode)));
+  }
+  if (requested_target_temperature.has_value()) {
+    ESP_LOGD(TAG, "control() requested target_temperature=%.1f", *requested_target_temperature);
+  }
 
   if (const auto mode = call.get_mode()) {
     switch (*mode) {
@@ -160,13 +178,26 @@ void MillPanelHeaterGen2::control(const climate::ClimateCall &call) {
     }
 
     this->mode = *mode;
+    ESP_LOGD(
+        TAG,
+        "publish_state() [control mode request]: target_temperature=%.1f, current_temperature=%.1f, mode=%s, action=%s",
+        this->target_temperature, this->current_temperature, LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
+        LOG_STR_ARG(climate::climate_action_to_string(this->action)));
     this->publish_state();
   }
 
   if (const auto target_temperature = call.get_target_temperature()) {
     const auto temperature = static_cast<uint8_t>(*target_temperature);
     this->send_temperature_command_(temperature);
+    ESP_LOGD(TAG, "target_temperature update [control target temperature request]: old=%.1f, new=%.1f",
+             this->target_temperature, static_cast<float>(temperature));
     this->target_temperature = temperature;
+    ESP_LOGD(TAG,
+             "publish_state() [control target temperature request]: target_temperature=%.1f, "
+             "current_temperature=%.1f, mode=%s, action=%s",
+             this->target_temperature, this->current_temperature,
+             LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
+             LOG_STR_ARG(climate::climate_action_to_string(this->action)));
     this->publish_state();
   }
 }
