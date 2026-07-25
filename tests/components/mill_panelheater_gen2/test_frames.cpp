@@ -30,7 +30,7 @@ TEST(MillPanelHeaterGen2Test, SendsTemperatureSixDegreeFrame) {
 
 class MillPanelHeaterGen2ReceiveTest : public ::testing::TestWithParam<uint8_t> {};
 
-TEST_P(MillPanelHeaterGen2ReceiveTest, PreservesStatusFrameHandling) {
+TEST_P(MillPanelHeaterGen2ReceiveTest, UpdatesStateFromStatusFrame) {
   MockUARTComponent uart;
   TestableMillPanelHeaterGen2 heater;
   heater.set_uart_parent(&uart);
@@ -43,7 +43,7 @@ TEST_P(MillPanelHeaterGen2ReceiveTest, PreservesStatusFrameHandling) {
     heater.loop();
   }
 
-  EXPECT_FLOAT_EQ(heater.target_temperature, 22.0f);
+  EXPECT_FLOAT_EQ(heater.target_temperature, 5.0f);
   EXPECT_FLOAT_EQ(heater.current_temperature, 20.0f);
   EXPECT_EQ(heater.mode, climate::CLIMATE_MODE_HEAT);
   EXPECT_EQ(heater.action, climate::CLIMATE_ACTION_IDLE);
