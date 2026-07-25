@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "esphome/components/climate/climate.h"
+#include "esphome/components/sensor/sensor.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 
@@ -17,6 +18,9 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
   void control(const climate::ClimateCall &call) override;
   void dump_config() override;
 
+  void set_control_call_count_sensor(sensor::Sensor *sensor) { this->control_call_count_sensor_ = sensor; }
+  void set_send_command_count_sensor(sensor::Sensor *sensor) { this->send_command_count_sensor_ = sensor; }
+
  protected:
   climate::ClimateTraits traits() override;
 
@@ -27,6 +31,7 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
   void receive_byte_();
   void log_frame_(const char *message, uint8_t final_byte) const;
   void send_command_(std::array<uint8_t, 13> payload, size_t command_position, uint8_t command);
+  void publish_diagnostic_counters_();
   static uint8_t checksum_(const uint8_t *data, size_t length);
 
   static constexpr size_t RECEIVE_BUFFER_SIZE = 15;
@@ -47,6 +52,11 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
   size_t received_length_{0};
   bool receive_in_progress_{false};
   bool new_data_{false};
+
+  sensor::Sensor *control_call_count_sensor_{nullptr};
+  sensor::Sensor *send_command_count_sensor_{nullptr};
+  uint32_t control_call_count_{0};
+  uint32_t send_command_count_{0};
 };
 
 }  // namespace esphome::mill_panelheater_gen2
