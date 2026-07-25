@@ -9,6 +9,7 @@
 namespace esphome::mill_panelheater_gen2 {
 
 static const char *const TAG = "mill_panelheater_gen2.climate";
+static const char *const DIAGNOSTIC_BUILD_ID = "mill-gen2-diagnostics-20260725-a";
 
 static constexpr std::array<uint8_t, 13> POWER_COMMAND{
     0x00, 0x10, 0x06, 0x00, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -17,11 +18,18 @@ static constexpr std::array<uint8_t, 13> TEMPERATURE_COMMAND{
     0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
-void MillPanelHeaterGen2::setup() { ESP_LOGI(TAG, "MillPanelHeaterGen2 initialization..."); }
+void MillPanelHeaterGen2::setup() {
+  ESP_LOGI(TAG, "MillPanelHeaterGen2 initialization...");
+  this->publish_diagnostic_counters_();
+  ESP_LOGE(TAG, "DIAG build=%s event=setup control_count=%u send_count=%u", DIAGNOSTIC_BUILD_ID,
+           static_cast<unsigned>(this->control_call_count_), static_cast<unsigned>(this->send_command_count_));
+}
 
 void MillPanelHeaterGen2::dump_config() {
   ESP_LOGCONFIG(TAG, "MillPanelHeaterGen2:");
   LOG_CLIMATE("", "MillPanelHeaterGen2 Climate", this);
+  LOG_SENSOR("  ", "Control Call Count", this->control_call_count_sensor_);
+  LOG_SENSOR("  ", "Send Command Count", this->send_command_count_sensor_);
   this->check_uart_settings(9600);
 }
 
@@ -149,6 +157,11 @@ climate::ClimateTraits MillPanelHeaterGen2::traits() {
 }
 
 void MillPanelHeaterGen2::control(const climate::ClimateCall &call) {
+  this->control_call_count_++;
+  this->publish_diagnostic_counters_();
+  ESP_LOGE(TAG, "DIAG build=%s event=control control_count=%u send_count=%u", DIAGNOSTIC_BUILD_ID,
+           static_cast<unsigned>(this->control_call_count_), static_cast<unsigned>(this->send_command_count_));
+
   const auto requested_mode = call.get_mode();
   const auto requested_target_temperature = call.get_target_temperature();
   ESP_LOGD(TAG, "control() called: mode_set=%s, target_temperature_set=%s", YESNO(requested_mode.has_value()),
@@ -205,6 +218,10 @@ void MillPanelHeaterGen2::send_temperature_command_(uint8_t command) {
 
 void MillPanelHeaterGen2::send_command_(std::array<uint8_t, COMMAND_PAYLOAD_SIZE> payload, size_t command_position,
                                         uint8_t command) {
+  this->send_command_count_++;
+  this->publish_diagnostic_counters_();
+  ESP_LOGE(TAG, "DIAG build=%s event=send_command control_count=%u send_count=%u", DIAGNOSTIC_BUILD_ID,
+           static_cast<unsigned>(this->control_call_count_), static_cast<unsigned>(this->send_command_count_));
   ESP_LOGD(TAG, "Sending serial command");
   payload[command_position] = command;
 
@@ -220,6 +237,15 @@ void MillPanelHeaterGen2::send_command_(std::array<uint8_t, COMMAND_PAYLOAD_SIZE
   frame[COMMAND_PAYLOAD_SIZE + 1] = checksum_(payload.data(), payload.size());
   frame[COMMAND_PAYLOAD_SIZE + 2] = END_MARKER;
   this->write_array(frame);
+}
+
+void MillPanelHeaterGen2::publish_diagnostic_counters_() {
+  if (this->control_call_count_sensor_ != nullptr) {
+    this->control_call_count_sensor_->publish_state(static_cast<float>(this->control_call_count_));
+  }
+  if (this->send_command_count_sensor_ != nullptr) {
+    this->send_command_count_sensor_->publish_state(static_cast<float>(this->send_command_count_));
+  }
 }
 
 uint8_t MillPanelHeaterGen2::checksum_(const uint8_t *data, size_t length) {
