@@ -49,7 +49,8 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
   static constexpr uint8_t LINE_END_MARKER = 0x0A;
   static constexpr uint8_t STATUS_COMMAND_TYPE = 0xC9;
 
-  static constexpr uint32_t COMMUNICATION_TIMEOUT = 60000;
+  static constexpr size_t SHORT_C9_FRAME_LENGTH = 6;
+  static constexpr uint32_t COMMUNICATION_TIMEOUT = 150000;
 
   std::array<uint8_t, RECEIVE_BUFFER_SIZE> received_data_{};
   size_t received_length_{0};
