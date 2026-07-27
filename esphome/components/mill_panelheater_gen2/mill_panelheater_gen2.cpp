@@ -17,7 +17,10 @@ static constexpr std::array<uint8_t, 13> TEMPERATURE_COMMAND{
     0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
-void MillPanelHeaterGen2::setup() { ESP_LOGI(TAG, "MillPanelHeaterGen2 initialization..."); }
+void MillPanelHeaterGen2::setup() {
+  ESP_LOGI(TAG, "MillPanelHeaterGen2 initialization...");
+  this->reset_communication_timeout_();
+}
 
 void MillPanelHeaterGen2::dump_config() {
   ESP_LOGCONFIG(TAG, "MillPanelHeaterGen2:");
@@ -37,9 +40,9 @@ void MillPanelHeaterGen2::loop() {
   }
   this->new_data_ = false;
 
-  if (this->received_length_ <= ACTION_POS) {
-    ESP_LOGW(TAG, "Rejecting frame: payload is too short (%u bytes; need at least %u bytes through ACTION_POS)",
-             static_cast<unsigned>(this->received_length_), static_cast<unsigned>(ACTION_POS + 1));
+  if (this->received_length_ <= COMMAND_TYPE_POS) {
+    ESP_LOGD(TAG, "Ignoring short frame: payload has %u bytes; command type is unavailable",
+             static_cast<unsigned>(this->received_length_));
     return;
   }
 
@@ -48,6 +51,16 @@ void MillPanelHeaterGen2::loop() {
              STATUS_COMMAND_TYPE);
     return;
   }
+
+  if (this->received_length_ <= ACTION_POS) {
+    ESP_LOGW(TAG,
+             "Rejecting C9 status frame: payload is too short (%u bytes; need at least %u bytes through ACTION_POS)",
+             static_cast<unsigned>(this->received_length_), static_cast<unsigned>(ACTION_POS + 1));
+    return;
+  }
+
+  this->reset_communication_timeout_();
+  this->status_clear_warning();
 
   this->target_temperature = this->received_data_[TARGET_TEMP_POS];
 
@@ -78,6 +91,19 @@ void MillPanelHeaterGen2::publish_power_state_() {
 
   const float power = this->action == climate::CLIMATE_ACTION_HEATING ? this->rated_power_ : 0.0f;
   this->power_sensor_->publish_state(power);
+}
+
+void MillPanelHeaterGen2::reset_communication_timeout_() {
+  this->set_timeout("communication_timeout", COMMUNICATION_TIMEOUT, [this]() {
+    ESP_LOGW(TAG, "Communication timeout: no valid C9 status frame received for 60 seconds");
+    this->status_set_warning("Communication timeout");
+    this->current_temperature = NAN;
+    this->target_temperature = NAN;
+    this->publish_state();
+    if (this->power_sensor_ != nullptr) {
+      this->power_sensor_->publish_state(NAN);
+    }
+  });
 }
 
 void MillPanelHeaterGen2::receive_byte_() {
