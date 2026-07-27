@@ -52,10 +52,21 @@ void MillPanelHeaterGen2::loop() {
     return;
   }
 
+  // The heater emits a six-byte C9 frame roughly once per minute even when it does not send a full status update.
+  // Treat that frame as communication activity, but do not parse climate state from it.
+  if (this->received_length_ == SHORT_C9_FRAME_LENGTH) {
+    ESP_LOGD(TAG, "Short C9 communication frame received");
+    this->reset_communication_timeout_();
+    this->status_clear_warning();
+    return;
+  }
+
   if (this->received_length_ <= ACTION_POS) {
     ESP_LOGW(TAG,
-             "Rejecting C9 status frame: payload is too short (%u bytes; need at least %u bytes through ACTION_POS)",
-             static_cast<unsigned>(this->received_length_), static_cast<unsigned>(ACTION_POS + 1));
+             "Rejecting C9 status frame: payload is too short (%u bytes; need exactly %u for a short communication "
+             "frame or at least %u through ACTION_POS)",
+             static_cast<unsigned>(this->received_length_), static_cast<unsigned>(SHORT_C9_FRAME_LENGTH),
+             static_cast<unsigned>(ACTION_POS + 1));
     return;
   }
 
@@ -95,7 +106,7 @@ void MillPanelHeaterGen2::publish_power_state_() {
 
 void MillPanelHeaterGen2::reset_communication_timeout_() {
   this->set_timeout("communication_timeout", COMMUNICATION_TIMEOUT, [this]() {
-    ESP_LOGW(TAG, "Communication timeout: no valid C9 status frame received for 60 seconds");
+    ESP_LOGW(TAG, "Communication timeout: no C9 frame received for 150 seconds");
     this->status_set_warning("Communication timeout");
     this->current_temperature = NAN;
     this->target_temperature = NAN;
