@@ -31,6 +31,7 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
   void receive_byte_();
   void log_frame_(const char *message, uint8_t final_byte) const;
   void publish_power_state_();
+  void reset_communication_timeout_();
   void send_command_(std::array<uint8_t, 13> payload, size_t command_position, uint8_t command);
   static uint8_t checksum_(const uint8_t *data, size_t length);
 
@@ -47,6 +48,8 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
   static constexpr uint8_t END_MARKER = 0x5B;
   static constexpr uint8_t LINE_END_MARKER = 0x0A;
   static constexpr uint8_t STATUS_COMMAND_TYPE = 0xC9;
+
+  static constexpr uint32_t COMMUNICATION_TIMEOUT = 60000;
 
   std::array<uint8_t, RECEIVE_BUFFER_SIZE> received_data_{};
   size_t received_length_{0};
