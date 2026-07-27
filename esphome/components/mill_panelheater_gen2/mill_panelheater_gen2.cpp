@@ -171,6 +171,7 @@ void MillPanelHeaterGen2::control(const climate::ClimateCall &call) {
     switch (*mode) {
       case climate::CLIMATE_MODE_OFF:
         this->send_power_command_(0x00);
+        this->action = climate::CLIMATE_ACTION_OFF;
         break;
       case climate::CLIMATE_MODE_HEAT:
         this->send_power_command_(0x01);
