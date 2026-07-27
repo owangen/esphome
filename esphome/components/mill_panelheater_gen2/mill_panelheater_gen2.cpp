@@ -22,6 +22,10 @@ void MillPanelHeaterGen2::setup() { ESP_LOGI(TAG, "MillPanelHeaterGen2 initializ
 void MillPanelHeaterGen2::dump_config() {
   ESP_LOGCONFIG(TAG, "MillPanelHeaterGen2:");
   LOG_CLIMATE("", "MillPanelHeaterGen2 Climate", this);
+  LOG_SENSOR("  ", "Estimated Power", this->power_sensor_);
+  if (this->power_sensor_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Rated power: %.0f W", this->rated_power_);
+  }
   this->check_uart_settings(9600);
 }
 
@@ -64,6 +68,16 @@ void MillPanelHeaterGen2::loop() {
            this->current_temperature, LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
            LOG_STR_ARG(climate::climate_action_to_string(this->action)));
   this->publish_state();
+  this->publish_power_state_();
+}
+
+void MillPanelHeaterGen2::publish_power_state_() {
+  if (this->power_sensor_ == nullptr) {
+    return;
+  }
+
+  const float power = this->action == climate::CLIMATE_ACTION_HEATING ? this->rated_power_ : 0.0f;
+  this->power_sensor_->publish_state(power);
 }
 
 void MillPanelHeaterGen2::receive_byte_() {
@@ -172,6 +186,7 @@ void MillPanelHeaterGen2::control(const climate::ClimateCall &call) {
         this->target_temperature, this->current_temperature, LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
         LOG_STR_ARG(climate::climate_action_to_string(this->action)));
     this->publish_state();
+    this->publish_power_state_();
   }
 
   if (const auto target_temperature = call.get_target_temperature()) {
