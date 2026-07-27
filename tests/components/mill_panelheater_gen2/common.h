@@ -30,14 +30,12 @@ class MockUARTComponent : public uart::UARTComponent {
     this->rx_position += length;
     return true;
   }
-  int available() override { return static_cast<int>(this->rx.size() - this->rx_position); }
+  size_t available() override { return this->rx.size() - this->rx_position; }
 
   MOCK_METHOD(bool, peek_byte, (uint8_t * data), (override));
   MOCK_METHOD(uart::UARTFlushResult, flush, (), (override));
   MOCK_METHOD(void, check_logger_conflict, (), (override));
-#if defined(USE_ESP8266) || defined(USE_ESP32)
   void load_settings(bool dump_config) override {}
-#endif
 };
 
 class TestableMillPanelHeaterGen2 : public MillPanelHeaterGen2 {

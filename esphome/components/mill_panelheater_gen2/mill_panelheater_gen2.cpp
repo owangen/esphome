@@ -52,21 +52,27 @@ void MillPanelHeaterGen2::loop() {
     return;
   }
 
-  // The heater emits a six-byte C9 frame roughly once per minute even when it does not send a full status update.
-  // Treat that frame as communication activity, but do not parse climate state from it.
-  if (this->received_length_ == SHORT_C9_FRAME_LENGTH) {
-    ESP_LOGD(TAG, "Short C9 communication frame received");
-    this->reset_communication_timeout_();
-    this->status_clear_warning();
+  if (this->received_data_[FRAME_LENGTH_POS] != STATUS_FRAME_LENGTH ||
+      this->received_length_ != STATUS_FRAME_LENGTH - FRAME_OVERHEAD_SIZE) {
+    ESP_LOGW(TAG, "Rejecting C9 status frame: declared length=%u, payload length=%u; expected %u and %u",
+             this->received_data_[FRAME_LENGTH_POS], static_cast<unsigned>(this->received_length_),
+             static_cast<unsigned>(STATUS_FRAME_LENGTH),
+             static_cast<unsigned>(STATUS_FRAME_LENGTH - FRAME_OVERHEAD_SIZE));
     return;
   }
 
-  if (this->received_length_ <= ACTION_POS) {
-    ESP_LOGW(TAG,
-             "Rejecting C9 status frame: payload is too short (%u bytes; need exactly %u for a short communication "
-             "frame or at least %u through ACTION_POS)",
-             static_cast<unsigned>(this->received_length_), static_cast<unsigned>(SHORT_C9_FRAME_LENGTH),
-             static_cast<unsigned>(ACTION_POS + 1));
+  const uint8_t expected_checksum = this->received_data_[this->received_length_ - 1];
+  const uint8_t calculated_checksum = checksum_(this->received_data_.data(), this->received_length_ - 1);
+  if (expected_checksum != calculated_checksum) {
+    ESP_LOGW(TAG, "Rejecting C9 status frame: checksum 0x%02X does not match calculated checksum 0x%02X",
+             expected_checksum, calculated_checksum);
+    return;
+  }
+
+  const uint8_t raw_mode = this->received_data_[MODE_POS];
+  const uint8_t raw_action = this->received_data_[ACTION_POS];
+  if (raw_mode > 0x01) {
+    ESP_LOGW(TAG, "Rejecting C9 status frame: unsupported mode value 0x%02X", raw_mode);
     return;
   }
 
@@ -79,15 +85,14 @@ void MillPanelHeaterGen2::loop() {
     this->current_temperature = this->received_data_[CURRENT_TEMP_POS];
   }
 
-  if (this->received_data_[MODE_POS] == 0x00) {
+  if (raw_mode == 0x00) {
     this->mode = climate::CLIMATE_MODE_OFF;
     this->action = climate::CLIMATE_ACTION_OFF;
-  } else if (this->received_data_[MODE_POS] == 0x01) {
+  } else {
     this->mode = climate::CLIMATE_MODE_HEAT;
+    this->action = raw_action == 0x00 ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
   }
 
-  this->action =
-      this->received_data_[ACTION_POS] == 0x00 ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
   ESP_LOGD(TAG, "C9 status: target=%.1f C, current=%.1f C, mode=%s, action=%s", this->target_temperature,
            this->current_temperature, LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
            LOG_STR_ARG(climate::climate_action_to_string(this->action)));
@@ -130,16 +135,33 @@ void MillPanelHeaterGen2::receive_byte_() {
   ESP_LOGVV(TAG, "RX byte: byte=0x%02X, receive_in_progress=%s, buffer_length=%u", byte,
             YESNO(this->receive_in_progress_), static_cast<unsigned>(this->received_length_));
 
+  const uint32_t now = millis();
+  if (this->receive_in_progress_ && now - this->last_receive_byte_time_ > RECEIVE_TIMEOUT) {
+    ESP_LOGD(TAG, "Discarding incomplete frame after receive timeout: payload_length=%u, expected_payload_length=%u",
+             static_cast<unsigned>(this->received_length_), static_cast<unsigned>(this->expected_payload_length_));
+    this->reset_receive_state_();
+  }
+
   if (!this->receive_in_progress_) {
     if (byte == START_MARKER) {
-      this->receive_in_progress_ = true;
-      this->received_length_ = 0;
+      this->start_receive_frame_();
     }
     return;
   }
 
-  if (byte == END_MARKER || byte == LINE_END_MARKER) {
-    this->log_frame_("Received complete frame", byte);
+  this->last_receive_byte_time_ = now;
+
+  if (this->expected_payload_length_ != 0 && this->received_length_ == this->expected_payload_length_) {
+    if (byte != END_MARKER) {
+      this->log_frame_("Rejecting frame with invalid final byte", byte);
+      this->reset_receive_state_();
+      if (byte == START_MARKER) {
+        this->start_receive_frame_();
+      }
+      return;
+    }
+
+    this->log_frame_("Received length-complete frame", byte);
     this->receive_in_progress_ = false;
     this->new_data_ = true;
     return;
@@ -156,6 +178,32 @@ void MillPanelHeaterGen2::receive_byte_() {
   }
 
   this->received_data_[this->received_length_++] = byte;
+
+  if (this->received_length_ == FRAME_LENGTH_POS + 1) {
+    const size_t declared_frame_length = this->received_data_[FRAME_LENGTH_POS];
+    if (declared_frame_length < MIN_FRAME_LENGTH ||
+        declared_frame_length > this->received_data_.size() + FRAME_OVERHEAD_SIZE) {
+      ESP_LOGW(TAG, "Rejecting frame with invalid declared length %u", static_cast<unsigned>(declared_frame_length));
+      this->reset_receive_state_();
+      return;
+    }
+    this->expected_payload_length_ = declared_frame_length - FRAME_OVERHEAD_SIZE;
+  }
+}
+
+void MillPanelHeaterGen2::reset_receive_state_() {
+  this->received_length_ = 0;
+  this->expected_payload_length_ = 0;
+  this->receive_in_progress_ = false;
+  this->new_data_ = false;
+}
+
+void MillPanelHeaterGen2::start_receive_frame_() {
+  this->received_length_ = 0;
+  this->expected_payload_length_ = 0;
+  this->receive_in_progress_ = true;
+  this->new_data_ = false;
+  this->last_receive_byte_time_ = millis();
 }
 
 void MillPanelHeaterGen2::log_frame_(const char *message, uint8_t final_byte) const {
