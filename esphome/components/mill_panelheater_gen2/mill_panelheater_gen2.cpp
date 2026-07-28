@@ -71,6 +71,7 @@ void MillPanelHeaterGen2::loop() {
   }
 
   const uint8_t raw_target_temperature = this->received_data_[TARGET_TEMP_POS];
+  const uint8_t raw_current_temperature = this->received_data_[CURRENT_TEMP_POS];
   const uint8_t raw_mode = this->received_data_[MODE_POS];
   const uint8_t raw_action = this->received_data_[ACTION_POS];
   if (raw_target_temperature < MIN_TARGET_TEMPERATURE || raw_target_temperature > MAX_TARGET_TEMPERATURE) {
@@ -94,8 +95,8 @@ void MillPanelHeaterGen2::loop() {
 
   this->target_temperature = raw_target_temperature;
 
-  if (this->received_data_[CURRENT_TEMP_POS] != 0) {
-    this->current_temperature = this->received_data_[CURRENT_TEMP_POS];
+  if (raw_current_temperature != 0) {
+    this->current_temperature = raw_current_temperature;
   }
 
   if (raw_mode == 0x00) {
@@ -106,8 +107,9 @@ void MillPanelHeaterGen2::loop() {
     this->action = raw_action == IDLE_ACTION ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
   }
 
-  ESP_LOGD(TAG, "C9 status: target=%.1f C, current=%.1f C, mode=%s, action=%s", this->target_temperature,
-           this->current_temperature, LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
+  ESP_LOGD(TAG, "C9 status: target=%.1f C, current=%.1f C (raw=%u), mode=%s, action=%s", this->target_temperature,
+           this->current_temperature, static_cast<unsigned>(raw_current_temperature),
+           LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
            LOG_STR_ARG(climate::climate_action_to_string(this->action)));
   this->publish_state();
   this->publish_power_state_();
