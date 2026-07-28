@@ -1,24 +1,21 @@
 from esphome import automation
 import esphome.codegen as cg
-import esphome.config_validation as cv
 from esphome.components import sensor
+import esphome.config_validation as cv
+from esphome.const import CONF_COMPONENT_ID, CONF_ID, CONF_STATE
 
-from esphome.const import CONF_ID, CONF_COMPONENT_ID, CONF_STATE
-
-from .. import nextion_ns, CONF_NEXTION_ID, CONF_PUBLISH_STATE, CONF_SEND_TO_NEXTION
-
+from .. import CONF_NEXTION_ID, CONF_PUBLISH_STATE, CONF_SEND_TO_NEXTION, nextion_ns
 from ..base_component import (
-    setup_component_core_,
-    CONFIG_SENSOR_COMPONENT_SCHEMA,
-    CONF_VARIABLE_NAME,
     CONF_COMPONENT_NAME,
     CONF_PRECISION,
+    CONF_VARIABLE_NAME,
     CONF_WAVE_CHANNEL_ID,
+    CONF_WAVE_MAX_LENGTH,
     CONF_WAVE_MAX_VALUE,
     CONF_WAVEFORM_SEND_LAST_VALUE,
-    CONF_WAVE_MAX_LENGTH,
+    CONFIG_SENSOR_COMPONENT_SCHEMA,
+    setup_component_core_,
 )
-
 
 CODEOWNERS = ["@senexcrenshaw"]
 
@@ -88,16 +85,16 @@ async def to_code(config):
         cg.add(var.set_component_id(config[CONF_COMPONENT_ID]))
 
     if CONF_WAVE_CHANNEL_ID in config:
+        cg.add_define("USE_NEXTION_WAVEFORM")
         cg.add(var.set_wave_channel_id(config[CONF_WAVE_CHANNEL_ID]))
-
-    if CONF_WAVEFORM_SEND_LAST_VALUE in config:
-        cg.add(var.set_waveform_send_last_value(config[CONF_WAVEFORM_SEND_LAST_VALUE]))
-
-    if CONF_WAVE_MAX_VALUE in config:
-        cg.add(var.set_wave_max_value(config[CONF_WAVE_MAX_VALUE]))
-
-    if CONF_WAVE_MAX_LENGTH in config:
-        cg.add(var.set_wave_max_length(config[CONF_WAVE_MAX_LENGTH]))
+        if CONF_WAVEFORM_SEND_LAST_VALUE in config:
+            cg.add(
+                var.set_waveform_send_last_value(config[CONF_WAVEFORM_SEND_LAST_VALUE])
+            )
+        if CONF_WAVE_MAX_VALUE in config:
+            cg.add(var.set_wave_max_value(config[CONF_WAVE_MAX_VALUE]))
+        if CONF_WAVE_MAX_LENGTH in config:
+            cg.add(var.set_wave_max_length(config[CONF_WAVE_MAX_LENGTH]))
 
 
 @automation.register_action(
@@ -113,18 +110,19 @@ async def to_code(config):
             ),
         }
     ),
+    synchronous=True,
 )
 async def sensor_nextion_publish_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
 
-    template_ = await cg.templatable(config[CONF_STATE], args, float)
+    template_ = await cg.templatable(config[CONF_STATE], args, cg.float_)
     cg.add(var.set_state(template_))
 
-    template_ = await cg.templatable(config[CONF_PUBLISH_STATE], args, bool)
+    template_ = await cg.templatable(config[CONF_PUBLISH_STATE], args, cg.bool_)
     cg.add(var.set_publish_state(template_))
 
-    template_ = await cg.templatable(config[CONF_SEND_TO_NEXTION], args, bool)
+    template_ = await cg.templatable(config[CONF_SEND_TO_NEXTION], args, cg.bool_)
     cg.add(var.set_send_to_nextion(template_))
 
     return var

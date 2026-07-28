@@ -1,16 +1,15 @@
 #include "pzemdc.h"
 #include "esphome/core/log.h"
 
-namespace esphome {
-namespace pzemdc {
+namespace esphome::pzemdc {
 
 static const char *const TAG = "pzemdc";
 
-static const uint8_t PZEM_CMD_READ_IN_REGISTERS = 0x04;
 static const uint8_t PZEM_CMD_RESET_ENERGY = 0x42;
 static const uint8_t PZEM_REGISTER_COUNT = 10;  // 10x 16-bit registers
 
-void PZEMDC::on_modbus_data(const std::vector<uint8_t> &data) {
+void PZEMDC::on_response(std::span<const uint8_t> request_pdu, std::span<const uint8_t> response_pdu) {
+  auto data = modbus::helpers::server_pdu_payload(response_pdu);
   if (data.size() < 16) {
     ESP_LOGW(TAG, "Invalid size for PZEM DC!");
     return;
@@ -52,10 +51,12 @@ void PZEMDC::on_modbus_data(const std::vector<uint8_t> &data) {
     this->energy_sensor_->publish_state(energy);
 }
 
-void PZEMDC::update() { this->send(PZEM_CMD_READ_IN_REGISTERS, 0, 8); }
+void PZEMDC::update() { this->read_input_registers(0, 8); }
 void PZEMDC::dump_config() {
-  ESP_LOGCONFIG(TAG, "PZEMDC:");
-  ESP_LOGCONFIG(TAG, "  Address: 0x%02X", this->address_);
+  ESP_LOGCONFIG(TAG,
+                "PZEMDC:\n"
+                "  Address: 0x%02X",
+                this->address_);
   LOG_SENSOR("", "Voltage", this->voltage_sensor_);
   LOG_SENSOR("", "Current", this->current_sensor_);
   LOG_SENSOR("", "Power", this->power_sensor_);
@@ -63,11 +64,8 @@ void PZEMDC::dump_config() {
 }
 
 void PZEMDC::reset_energy() {
-  std::vector<uint8_t> cmd;
-  cmd.push_back(this->address_);
-  cmd.push_back(PZEM_CMD_RESET_ENERGY);
-  this->send_raw(cmd);
+  const uint8_t pdu[] = {PZEM_CMD_RESET_ENERGY};
+  this->send_pdu(pdu);
 }
 
-}  // namespace pzemdc
-}  // namespace esphome
+}  // namespace esphome::pzemdc

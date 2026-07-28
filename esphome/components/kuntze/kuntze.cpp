@@ -1,19 +1,26 @@
 #include "kuntze.h"
+#include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
+#include "esphome/core/application.h"
 
-namespace esphome {
-namespace kuntze {
+namespace esphome::kuntze {
 
 static const char *const TAG = "kuntze";
 
-static const uint8_t CMD_READ_REG = 0x03;
 static const uint16_t REGISTER[] = {4136, 4160, 4680, 6000, 4688, 4728, 5832};
 
-void Kuntze::on_modbus_data(const std::vector<uint8_t> &data) {
+// Maximum bytes to log for Modbus responses (2 registers = 4, plus count = 5)
+static constexpr size_t KUNTZE_MAX_LOG_BYTES = 8;
+
+void Kuntze::on_response(std::span<const uint8_t> request_pdu, std::span<const uint8_t> response_pdu) {
+  auto data = modbus::helpers::server_pdu_payload(response_pdu);
   auto get_16bit = [&](int i) -> uint16_t { return (uint16_t(data[i * 2]) << 8) | uint16_t(data[i * 2 + 1]); };
 
   this->waiting_ = false;
-  ESP_LOGV(TAG, "Data: %s", hexencode(data).c_str());
+#if ESPHOME_LOG_LEVEL >= ESPHOME_LOG_LEVEL_VERBOSE
+  char hex_buf[format_hex_pretty_size(KUNTZE_MAX_LOG_BYTES)];
+#endif
+  ESP_LOGV(TAG, "Data: %s", format_hex_pretty_to(hex_buf, data.data(), data.size()));
 
   float value = (float) get_16bit(0);
   for (int i = 0; i < data[3]; i++)
@@ -60,7 +67,7 @@ void Kuntze::on_modbus_data(const std::vector<uint8_t> &data) {
 }
 
 void Kuntze::loop() {
-  uint32_t now = millis();
+  uint32_t now = App.get_loop_component_start_time();
   // timeout after 15 seconds
   if (this->waiting_ && (now - this->last_send_ > 15000)) {
     ESP_LOGW(TAG, "timed out waiting for response");
@@ -69,15 +76,17 @@ void Kuntze::loop() {
   if (this->waiting_ || (this->state_ == 0))
     return;
   this->last_send_ = now;
-  send(CMD_READ_REG, REGISTER[this->state_ - 1], 2);
+  this->read_holding_registers(REGISTER[this->state_ - 1], 2);
   this->waiting_ = true;
 }
 
 void Kuntze::update() { this->state_ = 1; }
 
 void Kuntze::dump_config() {
-  ESP_LOGCONFIG(TAG, "Kuntze:");
-  ESP_LOGCONFIG(TAG, "  Address: 0x%02X", this->address_);
+  ESP_LOGCONFIG(TAG,
+                "Kuntze:\n"
+                "  Address: 0x%02X",
+                this->address_);
   LOG_SENSOR("", "pH", this->ph_sensor_);
   LOG_SENSOR("", "temperature", this->temperature_sensor_);
   LOG_SENSOR("", "DIS1", this->dis1_sensor_);
@@ -87,5 +96,4 @@ void Kuntze::dump_config() {
   LOG_SENSOR("", "OCI", this->oci_sensor_);
 }
 
-}  // namespace kuntze
-}  // namespace esphome
+}  // namespace esphome::kuntze

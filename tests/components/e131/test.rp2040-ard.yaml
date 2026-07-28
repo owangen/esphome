@@ -1,12 +1,8 @@
-wifi:
-  ssid: MySSID
-  password: password1
-
-e131:
+<<: !include common.yaml
 
 light:
   - platform: rp2040_pio_led_strip
-    id: led_strip
+    id: e131_led_strip
     pin: 2
     pio: 0
     num_leds: 256

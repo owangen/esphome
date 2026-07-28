@@ -1,15 +1,11 @@
 from esphome import automation
+import esphome.codegen as cg
 from esphome.components import text_sensor
 import esphome.config_validation as cv
-import esphome.codegen as cg
 from esphome.const import CONF_ID, CONF_STATE
 
-from .. import nextion_ns, CONF_NEXTION_ID, CONF_PUBLISH_STATE, CONF_SEND_TO_NEXTION
-
-from ..base_component import (
-    setup_component_core_,
-    CONFIG_TEXT_COMPONENT_SCHEMA,
-)
+from .. import CONF_NEXTION_ID, CONF_PUBLISH_STATE, CONF_SEND_TO_NEXTION, nextion_ns
+from ..base_component import CONFIG_TEXT_COMPONENT_SCHEMA, setup_component_core_
 
 CODEOWNERS = ["@senexcrenshaw"]
 
@@ -52,6 +48,7 @@ async def to_code(config):
             ),
         }
     ),
+    synchronous=True,
 )
 async def sensor_nextion_publish_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
