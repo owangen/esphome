@@ -19,7 +19,7 @@ static constexpr std::array<uint8_t, 13> TEMPERATURE_COMMAND{
 };
 
 void MillPanelHeaterGen2::setup() {
-  ESP_LOGI(TAG, "MillPanelHeaterGen2 initialization...");
+  ESP_LOGD(TAG, "MillPanelHeaterGen2 initialization...");
   this->reset_communication_timeout_();
 }
 
@@ -48,7 +48,7 @@ void MillPanelHeaterGen2::loop() {
   }
 
   if (this->received_data_[COMMAND_TYPE_POS] != STATUS_COMMAND_TYPE) {
-    ESP_LOGD(TAG, "Ignoring frame: type 0x%02X is not status type 0x%02X", this->received_data_[COMMAND_TYPE_POS],
+    ESP_LOGV(TAG, "Ignoring frame: type 0x%02X is not status type 0x%02X", this->received_data_[COMMAND_TYPE_POS],
              STATUS_COMMAND_TYPE);
     return;
   }
@@ -127,7 +127,8 @@ void MillPanelHeaterGen2::publish_power_state_() {
 
 void MillPanelHeaterGen2::reset_communication_timeout_() {
   this->set_timeout("communication_timeout", COMMUNICATION_TIMEOUT, [this]() {
-    ESP_LOGW(TAG, "Communication timeout: no C9 frame received for 150 seconds");
+    ESP_LOGW(TAG, "Communication timeout: no C9 frame received for %u seconds",
+             static_cast<unsigned>(COMMUNICATION_TIMEOUT / 1000));
     this->status_set_warning("Communication timeout");
     this->current_temperature = NAN;
     this->target_temperature = NAN;
@@ -169,6 +170,7 @@ void MillPanelHeaterGen2::receive_byte_() {
 
   if (this->expected_payload_length_ != 0 && this->received_length_ == this->expected_payload_length_) {
     if (byte != END_MARKER) {
+      ESP_LOGD(TAG, "Rejecting frame with invalid final byte 0x%02X", byte);
       this->log_frame_("Rejecting frame with invalid final byte", byte);
       this->reset_receive_state_();
       if (byte == START_MARKER) {
@@ -222,24 +224,29 @@ void MillPanelHeaterGen2::start_receive_frame_() {
   this->last_receive_byte_time_ = millis();
 }
 
-void MillPanelHeaterGen2::log_frame_(const char *message, uint8_t final_byte) const {
+void MillPanelHeaterGen2::log_frame_(const char *message, uint8_t last_byte) const {
+#ifdef ESPHOME_LOG_HAS_VERBOSE
   std::array<uint8_t, RECEIVE_BUFFER_SIZE + 2> frame{};
   size_t frame_length = 0;
   frame[frame_length++] = START_MARKER;
   for (size_t i = 0; i < this->received_length_; i++) {
     frame[frame_length++] = this->received_data_[i];
   }
-  frame[frame_length++] = final_byte;
+  frame[frame_length++] = last_byte;
 
   if (this->received_length_ > COMMAND_TYPE_POS) {
-    ESP_LOGD(TAG, "%s: bytes=%s, length=%u, payload_length=%u, type=0x%02X, final_byte=0x%02X", message,
+    ESP_LOGV(TAG, "%s: bytes=%s, length=%u, payload_length=%u, type=0x%02X, last_byte=0x%02X", message,
              format_hex_pretty(frame.data(), frame_length).c_str(), static_cast<unsigned>(frame_length),
-             static_cast<unsigned>(this->received_length_), this->received_data_[COMMAND_TYPE_POS], final_byte);
+             static_cast<unsigned>(this->received_length_), this->received_data_[COMMAND_TYPE_POS], last_byte);
   } else {
-    ESP_LOGD(TAG, "%s: bytes=%s, length=%u, payload_length=%u, type=unavailable, final_byte=0x%02X", message,
+    ESP_LOGV(TAG, "%s: bytes=%s, length=%u, payload_length=%u, type=unavailable, last_byte=0x%02X", message,
              format_hex_pretty(frame.data(), frame_length).c_str(), static_cast<unsigned>(frame_length),
-             static_cast<unsigned>(this->received_length_), final_byte);
+             static_cast<unsigned>(this->received_length_), last_byte);
   }
+#else
+  (void) message;
+  (void) last_byte;
+#endif
 }
 
 climate::ClimateTraits MillPanelHeaterGen2::traits() {
@@ -308,7 +315,7 @@ void MillPanelHeaterGen2::send_temperature_command_(uint8_t command) {
 
 void MillPanelHeaterGen2::send_command_(std::array<uint8_t, COMMAND_PAYLOAD_SIZE> payload, size_t command_position,
                                         uint8_t command) {
-  ESP_LOGD(TAG, "Sending serial command");
+  ESP_LOGV(TAG, "Sending serial command");
   payload[command_position] = command;
 
   // The original implementation sent 13 payload bytes and attempted to set byte 12 to zero for power commands.

@@ -29,7 +29,7 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
 
  private:
   void receive_byte_();
-  void log_frame_(const char *message, uint8_t final_byte) const;
+  void log_frame_(const char *message, uint8_t last_byte) const;
   void reset_receive_state_();
   void start_receive_frame_();
   void publish_power_state_();
