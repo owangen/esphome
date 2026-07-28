@@ -205,6 +205,22 @@ TEST(MillPanelHeaterGen2Test, UpdatesStateFromStatusFrame) {
   EXPECT_EQ(heater.action, climate::CLIMATE_ACTION_IDLE);
 }
 
+TEST(MillPanelHeaterGen2Test, AcceptsZeroCurrentTemperature) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  heater.set_uart_parent(&uart);
+  heater.current_temperature = 20.0f;
+  uart.rx = {
+      0x5A, 0x00, 0x11, 0x00, 0x00, 0xC9, 0x00, 0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0xE0, 0x5B,
+  };
+
+  while (uart.available() != 0) {
+    heater.loop();
+  }
+
+  EXPECT_FLOAT_EQ(heater.current_temperature, 0.0f);
+}
+
 TEST(MillPanelHeaterGen2Test, ParsesTenDegreeTargetAsData) {
   MockUARTComponent uart;
   TestableMillPanelHeaterGen2 heater;

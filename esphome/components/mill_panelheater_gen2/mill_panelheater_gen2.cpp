@@ -78,8 +78,7 @@ void MillPanelHeaterGen2::loop() {
     return;
   }
   if (raw_action != PROTOCOL_ACTION_IDLE && raw_action != PROTOCOL_ACTION_HEATING) {
-    ESP_LOGW(TAG, "Rejecting C9 status frame: unsupported action value 0x%02X",
-             static_cast<unsigned>(raw_action));
+    ESP_LOGW(TAG, "Rejecting C9 status frame: unsupported action value 0x%02X", static_cast<unsigned>(raw_action));
     return;
   }
 
@@ -88,17 +87,14 @@ void MillPanelHeaterGen2::loop() {
 
   this->target_temperature = raw_target_temperature;
 
-  if (raw_current_temperature != 0) {
-    this->current_temperature = raw_current_temperature;
-  }
+  this->current_temperature = raw_current_temperature;
 
   if (raw_mode == PROTOCOL_MODE_OFF) {
     this->mode = climate::CLIMATE_MODE_OFF;
     this->action = climate::CLIMATE_ACTION_OFF;
   } else {
     this->mode = climate::CLIMATE_MODE_HEAT;
-    this->action =
-        raw_action == PROTOCOL_ACTION_IDLE ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
+    this->action = raw_action == PROTOCOL_ACTION_IDLE ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
   }
 
   ESP_LOGD(TAG, "C9 status: target=%.1f C, current=%.1f C (raw=%u), mode=%s, action=%s", this->target_temperature,
