@@ -112,6 +112,7 @@ void MillPanelHeaterGen2::loop() {
            LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
            LOG_STR_ARG(climate::climate_action_to_string(this->action)));
   this->publish_state();
+  // Keep periodic power samples: integration sensors use each source update as an integration timestamp.
   this->publish_power_state_();
 }
 

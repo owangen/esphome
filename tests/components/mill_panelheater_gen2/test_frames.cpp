@@ -249,6 +249,27 @@ TEST(MillPanelHeaterGen2Test, AcceptsHeatingActionValue) {
   EXPECT_EQ(heater.action, climate::CLIMATE_ACTION_HEATING);
 }
 
+TEST(MillPanelHeaterGen2Test, PublishesPowerForEveryStatusFrame) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  sensor::Sensor power_sensor;
+  std::vector<float> published_power;
+  heater.set_uart_parent(&uart);
+  heater.set_power_sensor(&power_sensor);
+  heater.set_rated_power(900.0f);
+  power_sensor.add_on_state_callback([&published_power](float value) { published_power.push_back(value); });
+  uart.rx = {
+      0x5A, 0x00, 0x11, 0x00, 0x00, 0xC9, 0x00, 0x0A, 0x14, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFA, 0x5B,
+      0x5A, 0x00, 0x11, 0x00, 0x00, 0xC9, 0x00, 0x0A, 0x14, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFA, 0x5B,
+  };
+
+  while (uart.available() != 0) {
+    heater.loop();
+  }
+
+  EXPECT_THAT(published_power, ::testing::ElementsAre(900.0f, 900.0f));
+}
+
 TEST(MillPanelHeaterGen2Test, RejectsInvalidChecksum) {
   MockUARTComponent uart;
   TestableMillPanelHeaterGen2 heater;
