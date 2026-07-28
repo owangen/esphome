@@ -53,6 +53,42 @@ TEST(MillPanelHeaterGen2Test, TemperatureControlWaitsForStatusConfirmation) {
   EXPECT_EQ(heater.action, climate::CLIMATE_ACTION_IDLE);
 }
 
+TEST(MillPanelHeaterGen2Test, TemperatureControlAcceptsSupportedRangeEndpoints) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  heater.set_uart_parent(&uart);
+
+  auto minimum_call = heater.make_call();
+  minimum_call.set_target_temperature(5.0f);
+  heater.control(minimum_call);
+
+  auto maximum_call = heater.make_call();
+  maximum_call.set_target_temperature(35.0f);
+  heater.control(maximum_call);
+
+  const std::vector<uint8_t> expected{
+      0x5A, 0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7E, 0x5B,
+      0x5A, 0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00, 0x9C, 0x5B,
+  };
+  EXPECT_EQ(uart.tx, expected);
+}
+
+TEST(MillPanelHeaterGen2Test, TemperatureControlRejectsValuesOutsideSupportedRange) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  heater.set_uart_parent(&uart);
+
+  auto below_minimum_call = heater.make_call();
+  below_minimum_call.set_target_temperature(4.0f);
+  heater.control(below_minimum_call);
+
+  auto above_maximum_call = heater.make_call();
+  above_maximum_call.set_target_temperature(36.0f);
+  heater.control(above_maximum_call);
+
+  EXPECT_TRUE(uart.tx.empty());
+}
+
 TEST(MillPanelHeaterGen2Test, PowerOffControlWaitsForStatusConfirmation) {
   MockUARTComponent uart;
   TestableMillPanelHeaterGen2 heater;
@@ -135,6 +171,82 @@ TEST(MillPanelHeaterGen2Test, ParsesTenDegreeTargetAsData) {
   EXPECT_FLOAT_EQ(heater.current_temperature, 20.0f);
   EXPECT_EQ(heater.mode, climate::CLIMATE_MODE_HEAT);
   EXPECT_EQ(heater.action, climate::CLIMATE_ACTION_IDLE);
+}
+
+TEST(MillPanelHeaterGen2Test, AcceptsMaximumTargetTemperatureFromStatusFrame) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  heater.set_uart_parent(&uart);
+  heater.target_temperature = 22.0f;
+  uart.rx = {
+      0x5A, 0x00, 0x11, 0x00, 0x00, 0xC9, 0x00, 0x23, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x12, 0x5B,
+  };
+
+  while (uart.available() != 0) {
+    heater.loop();
+  }
+
+  EXPECT_FLOAT_EQ(heater.target_temperature, 35.0f);
+  EXPECT_FLOAT_EQ(heater.current_temperature, 20.0f);
+}
+
+TEST(MillPanelHeaterGen2Test, RejectsTargetTemperatureOutsideSupportedRange) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  heater.set_uart_parent(&uart);
+  heater.target_temperature = 22.0f;
+  heater.current_temperature = 21.0f;
+  uart.rx = {
+      0x5A, 0x00, 0x11, 0x00, 0x00, 0xC9, 0x00, 0x04, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0xF3, 0x5B,
+      0x5A, 0x00, 0x11, 0x00, 0x00, 0xC9, 0x00, 0x24, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x13, 0x5B,
+  };
+
+  while (uart.available() != 0) {
+    heater.loop();
+  }
+
+  EXPECT_FLOAT_EQ(heater.target_temperature, 22.0f);
+  EXPECT_FLOAT_EQ(heater.current_temperature, 21.0f);
+}
+
+TEST(MillPanelHeaterGen2Test, RejectsUnsupportedActionValue) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  heater.set_uart_parent(&uart);
+  heater.target_temperature = 22.0f;
+  heater.current_temperature = 21.0f;
+  heater.mode = climate::CLIMATE_MODE_OFF;
+  heater.action = climate::CLIMATE_ACTION_OFF;
+  uart.rx = {
+      0x5A, 0x00, 0x11, 0x00, 0x00, 0xC9, 0x00, 0x0A, 0x14, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0xFB, 0x5B,
+  };
+
+  while (uart.available() != 0) {
+    heater.loop();
+  }
+
+  EXPECT_FLOAT_EQ(heater.target_temperature, 22.0f);
+  EXPECT_FLOAT_EQ(heater.current_temperature, 21.0f);
+  EXPECT_EQ(heater.mode, climate::CLIMATE_MODE_OFF);
+  EXPECT_EQ(heater.action, climate::CLIMATE_ACTION_OFF);
+}
+
+TEST(MillPanelHeaterGen2Test, AcceptsHeatingActionValue) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  heater.set_uart_parent(&uart);
+  heater.mode = climate::CLIMATE_MODE_OFF;
+  heater.action = climate::CLIMATE_ACTION_OFF;
+  uart.rx = {
+      0x5A, 0x00, 0x11, 0x00, 0x00, 0xC9, 0x00, 0x0A, 0x14, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFA, 0x5B,
+  };
+
+  while (uart.available() != 0) {
+    heater.loop();
+  }
+
+  EXPECT_EQ(heater.mode, climate::CLIMATE_MODE_HEAT);
+  EXPECT_EQ(heater.action, climate::CLIMATE_ACTION_HEATING);
 }
 
 TEST(MillPanelHeaterGen2Test, RejectsInvalidChecksum) {

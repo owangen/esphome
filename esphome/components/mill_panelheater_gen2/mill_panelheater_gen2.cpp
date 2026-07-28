@@ -1,6 +1,7 @@
 #include "mill_panelheater_gen2.h"
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 
@@ -69,17 +70,29 @@ void MillPanelHeaterGen2::loop() {
     return;
   }
 
+  const uint8_t raw_target_temperature = this->received_data_[TARGET_TEMP_POS];
   const uint8_t raw_mode = this->received_data_[MODE_POS];
   const uint8_t raw_action = this->received_data_[ACTION_POS];
+  if (raw_target_temperature < MIN_TARGET_TEMPERATURE || raw_target_temperature > MAX_TARGET_TEMPERATURE) {
+    ESP_LOGW(TAG, "Rejecting C9 status frame: target temperature %u is outside supported range %u-%u",
+             static_cast<unsigned>(raw_target_temperature), static_cast<unsigned>(MIN_TARGET_TEMPERATURE),
+             static_cast<unsigned>(MAX_TARGET_TEMPERATURE));
+    return;
+  }
   if (raw_mode > 0x01) {
     ESP_LOGW(TAG, "Rejecting C9 status frame: unsupported mode value 0x%02X", raw_mode);
+    return;
+  }
+  if (raw_action != IDLE_ACTION && raw_action != HEATING_ACTION) {
+    ESP_LOGW(TAG, "Rejecting C9 status frame: unsupported action value 0x%02X",
+             static_cast<unsigned>(raw_action));
     return;
   }
 
   this->reset_communication_timeout_();
   this->status_clear_warning();
 
-  this->target_temperature = this->received_data_[TARGET_TEMP_POS];
+  this->target_temperature = raw_target_temperature;
 
   if (this->received_data_[CURRENT_TEMP_POS] != 0) {
     this->current_temperature = this->received_data_[CURRENT_TEMP_POS];
@@ -90,7 +103,7 @@ void MillPanelHeaterGen2::loop() {
     this->action = climate::CLIMATE_ACTION_OFF;
   } else {
     this->mode = climate::CLIMATE_MODE_HEAT;
-    this->action = raw_action == 0x00 ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
+    this->action = raw_action == IDLE_ACTION ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
   }
 
   ESP_LOGD(TAG, "C9 status: target=%.1f C, current=%.1f C, mode=%s, action=%s", this->target_temperature,
@@ -230,8 +243,8 @@ climate::ClimateTraits MillPanelHeaterGen2::traits() {
   climate::ClimateTraits traits;
   traits.set_visual_target_temperature_step(1);
   traits.set_visual_current_temperature_step(1);
-  traits.set_visual_min_temperature(5);
-  traits.set_visual_max_temperature(35);
+  traits.set_visual_min_temperature(MIN_TARGET_TEMPERATURE);
+  traits.set_visual_max_temperature(MAX_TARGET_TEMPERATURE);
   traits.add_feature_flags(climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE | climate::CLIMATE_SUPPORTS_ACTION);
   traits.set_supported_modes({
       climate::CLIMATE_MODE_OFF,
@@ -252,6 +265,15 @@ void MillPanelHeaterGen2::control(const climate::ClimateCall &call) {
     ESP_LOGD(TAG, "control() requested target_temperature=%.1f", *requested_target_temperature);
   }
 
+  const bool target_temperature_is_valid =
+      !requested_target_temperature.has_value() ||
+      (std::isfinite(*requested_target_temperature) && *requested_target_temperature >= MIN_TARGET_TEMPERATURE &&
+       *requested_target_temperature <= MAX_TARGET_TEMPERATURE);
+  if (!target_temperature_is_valid) {
+    ESP_LOGW(TAG, "Ignoring target temperature %.1f: supported range is %u-%u C", *requested_target_temperature,
+             static_cast<unsigned>(MIN_TARGET_TEMPERATURE), static_cast<unsigned>(MAX_TARGET_TEMPERATURE));
+  }
+
   if (requested_mode.has_value()) {
     switch (*requested_mode) {
       case climate::CLIMATE_MODE_OFF:
@@ -268,7 +290,7 @@ void MillPanelHeaterGen2::control(const climate::ClimateCall &call) {
     }
   }
 
-  if (requested_target_temperature.has_value()) {
+  if (requested_target_temperature.has_value() && target_temperature_is_valid) {
     const auto temperature = static_cast<uint8_t>(*requested_target_temperature);
     this->send_temperature_command_(temperature);
     ESP_LOGD(TAG, "Temperature command sent; awaiting C9 status confirmation");

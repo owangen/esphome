@@ -50,6 +50,10 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
   static constexpr uint8_t START_MARKER = 0x5A;
   static constexpr uint8_t END_MARKER = 0x5B;
   static constexpr uint8_t STATUS_COMMAND_TYPE = 0xC9;
+  static constexpr uint8_t MIN_TARGET_TEMPERATURE = 5;
+  static constexpr uint8_t MAX_TARGET_TEMPERATURE = 35;
+  static constexpr uint8_t IDLE_ACTION = 0x00;
+  static constexpr uint8_t HEATING_ACTION = 0x01;
 
   static constexpr size_t FRAME_OVERHEAD_SIZE = 2;
   static constexpr size_t MIN_FRAME_LENGTH = 4;
