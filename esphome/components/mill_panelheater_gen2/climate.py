@@ -2,6 +2,7 @@ import esphome.codegen as cg
 from esphome.components import climate, sensor, uart
 import esphome.config_validation as cv
 from esphome.const import (
+    CONF_POWER,
     DEVICE_CLASS_POWER,
     STATE_CLASS_MEASUREMENT,
     UNIT_WATT,
@@ -12,7 +13,6 @@ CODEOWNERS = ["@owangen"]
 DEPENDENCIES = ["uart"]
 AUTO_LOAD = ["climate", "sensor"]
 
-CONF_POWER = "power"
 CONF_RATED_POWER = "rated_power"
 
 mill_panelheater_gen2_ns = cg.esphome_ns.namespace("mill_panelheater_gen2")
@@ -33,7 +33,7 @@ CONFIG_SCHEMA = cv.All(
     climate.climate_schema(MillPanelHeaterGen2)
     .extend(
         {
-            cv.Optional(CONF_RATED_POWER): cv.positive_float,
+            cv.Optional(CONF_RATED_POWER): cv.positive_not_null_float,
             cv.Optional(CONF_POWER): sensor.sensor_schema(
                 unit_of_measurement=UNIT_WATT,
                 accuracy_decimals=0,
