@@ -11,13 +11,6 @@ namespace esphome::mill_panelheater_gen2 {
 
 static const char *const TAG = "mill_panelheater_gen2.climate";
 
-static constexpr std::array<uint8_t, 13> POWER_COMMAND{
-    0x00, 0x10, 0x06, 0x00, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-};
-static constexpr std::array<uint8_t, 13> TEMPERATURE_COMMAND{
-    0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00,
-};
-
 void MillPanelHeaterGen2::setup() {
   ESP_LOGD(TAG, "MillPanelHeaterGen2 initialization...");
   this->reset_communication_timeout_();
@@ -80,11 +73,11 @@ void MillPanelHeaterGen2::loop() {
              static_cast<unsigned>(MAX_TARGET_TEMPERATURE));
     return;
   }
-  if (raw_mode > 0x01) {
+  if (raw_mode != PROTOCOL_MODE_OFF && raw_mode != PROTOCOL_MODE_HEAT) {
     ESP_LOGW(TAG, "Rejecting C9 status frame: unsupported mode value 0x%02X", raw_mode);
     return;
   }
-  if (raw_action != IDLE_ACTION && raw_action != HEATING_ACTION) {
+  if (raw_action != PROTOCOL_ACTION_IDLE && raw_action != PROTOCOL_ACTION_HEATING) {
     ESP_LOGW(TAG, "Rejecting C9 status frame: unsupported action value 0x%02X",
              static_cast<unsigned>(raw_action));
     return;
@@ -99,12 +92,13 @@ void MillPanelHeaterGen2::loop() {
     this->current_temperature = raw_current_temperature;
   }
 
-  if (raw_mode == 0x00) {
+  if (raw_mode == PROTOCOL_MODE_OFF) {
     this->mode = climate::CLIMATE_MODE_OFF;
     this->action = climate::CLIMATE_ACTION_OFF;
   } else {
     this->mode = climate::CLIMATE_MODE_HEAT;
-    this->action = raw_action == IDLE_ACTION ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
+    this->action =
+        raw_action == PROTOCOL_ACTION_IDLE ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
   }
 
   ESP_LOGD(TAG, "C9 status: target=%.1f C, current=%.1f C (raw=%u), mode=%s, action=%s", this->target_temperature,
@@ -126,9 +120,9 @@ void MillPanelHeaterGen2::publish_power_state_() {
 }
 
 void MillPanelHeaterGen2::reset_communication_timeout_() {
-  this->set_timeout("communication_timeout", COMMUNICATION_TIMEOUT, [this]() {
+  this->set_timeout("communication_timeout", COMMUNICATION_TIMEOUT_MS, [this]() {
     ESP_LOGW(TAG, "Communication timeout: no C9 frame received for %u seconds",
-             static_cast<unsigned>(COMMUNICATION_TIMEOUT / 1000));
+             static_cast<unsigned>(COMMUNICATION_TIMEOUT_MS / 1000));
     this->status_set_warning("Communication timeout");
     this->current_temperature = NAN;
     this->target_temperature = NAN;
@@ -153,7 +147,7 @@ void MillPanelHeaterGen2::receive_byte_() {
             YESNO(this->receive_in_progress_), static_cast<unsigned>(this->received_length_));
 
   const uint32_t now = millis();
-  if (this->receive_in_progress_ && now - this->last_receive_byte_time_ > RECEIVE_TIMEOUT) {
+  if (this->receive_in_progress_ && now - this->last_receive_byte_time_ > RECEIVE_TIMEOUT_MS) {
     ESP_LOGD(TAG, "Discarding incomplete frame after receive timeout: payload_length=%u, expected_payload_length=%u",
              static_cast<unsigned>(this->received_length_), static_cast<unsigned>(this->expected_payload_length_));
     this->reset_receive_state_();
@@ -189,9 +183,7 @@ void MillPanelHeaterGen2::receive_byte_() {
     this->log_frame_("Rejecting overlong frame", byte);
     ESP_LOGW(TAG, "Rejecting frame: payload exceeds %u-byte receive buffer; overflow byte is 0x%02X",
              static_cast<unsigned>(this->received_data_.size()), byte);
-    this->receive_in_progress_ = false;
-    this->received_length_ = 0;
-    this->new_data_ = false;
+    this->reset_receive_state_();
     return;
   }
 
@@ -287,11 +279,11 @@ void MillPanelHeaterGen2::control(const climate::ClimateCall &call) {
   if (requested_mode.has_value()) {
     switch (*requested_mode) {
       case climate::CLIMATE_MODE_OFF:
-        this->send_power_command_(0x00);
+        this->send_power_command_(PROTOCOL_MODE_OFF);
         ESP_LOGD(TAG, "Mode command sent; awaiting C9 status confirmation");
         break;
       case climate::CLIMATE_MODE_HEAT:
-        this->send_power_command_(0x01);
+        this->send_power_command_(PROTOCOL_MODE_HEAT);
         ESP_LOGD(TAG, "Mode command sent; awaiting C9 status confirmation");
         break;
       default:
@@ -307,10 +299,18 @@ void MillPanelHeaterGen2::control(const climate::ClimateCall &call) {
   }
 }
 
-void MillPanelHeaterGen2::send_power_command_(uint8_t command) { this->send_command_(POWER_COMMAND, 5, command); }
+void MillPanelHeaterGen2::send_power_command_(uint8_t command) {
+  static constexpr std::array<uint8_t, COMMAND_PAYLOAD_SIZE> payload{
+      0x00, 0x10, 0x06, 0x00, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  };
+  this->send_command_(payload, POWER_COMMAND_VALUE_POS, command);
+}
 
 void MillPanelHeaterGen2::send_temperature_command_(uint8_t command) {
-  this->send_command_(TEMPERATURE_COMMAND, 7, command);
+  static constexpr std::array<uint8_t, COMMAND_PAYLOAD_SIZE> payload{
+      0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00,
+  };
+  this->send_command_(payload, TEMPERATURE_COMMAND_VALUE_POS, command);
 }
 
 void MillPanelHeaterGen2::send_command_(std::array<uint8_t, COMMAND_PAYLOAD_SIZE> payload, size_t command_position,
@@ -320,7 +320,7 @@ void MillPanelHeaterGen2::send_command_(std::array<uint8_t, COMMAND_PAYLOAD_SIZE
 
   // The original implementation sent 13 payload bytes and attempted to set byte 12 to zero for power commands.
   // This padding byte is retained conservatively, but is not confirmed by manufacturer documentation or UART capture.
-  payload[12] = 0x00;
+  payload[COMMAND_PADDING_POS] = 0x00;
 
   std::array<uint8_t, COMMAND_PAYLOAD_SIZE + 3> frame{};
   frame[0] = START_MARKER;

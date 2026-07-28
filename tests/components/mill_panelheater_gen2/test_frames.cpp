@@ -1,8 +1,19 @@
 #include "common.h"
 
+#include <cmath>
+
 #include "esphome/core/hal.h"
 
 namespace esphome::mill_panelheater_gen2::testing {
+
+TEST(MillPanelHeaterGen2Test, InitialClimateStateIsUnknownUntilFirstStatusFrame) {
+  TestableMillPanelHeaterGen2 heater;
+
+  EXPECT_TRUE(std::isnan(heater.target_temperature));
+  EXPECT_TRUE(std::isnan(heater.current_temperature));
+  EXPECT_EQ(heater.mode, climate::CLIMATE_MODE_OFF);
+  EXPECT_EQ(heater.action, climate::CLIMATE_ACTION_OFF);
+}
 
 TEST(MillPanelHeaterGen2Test, SendsPowerOnFrame) {
   MockUARTComponent uart;
