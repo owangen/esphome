@@ -24,8 +24,8 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
  protected:
   climate::ClimateTraits traits() override;
 
-  void send_power_command_(uint8_t command);
-  void send_temperature_command_(uint8_t command);
+  void send_power_command_(uint8_t mode_value);
+  void send_temperature_command_(uint8_t temperature);
 
  private:
   static constexpr size_t RECEIVE_BUFFER_SIZE = 15;
@@ -37,7 +37,7 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
   void start_receive_frame_();
   void publish_power_state_();
   void reset_communication_timeout_();
-  void send_command_(std::array<uint8_t, COMMAND_PAYLOAD_SIZE> payload, size_t command_position, uint8_t command);
+  void send_command_(std::array<uint8_t, COMMAND_PAYLOAD_SIZE> payload, size_t value_position, uint8_t value);
   static uint8_t checksum_(const uint8_t *data, size_t length);
 
   static constexpr size_t FRAME_LENGTH_POS = 1;
@@ -48,7 +48,6 @@ class MillPanelHeaterGen2 : public climate::Climate, public Component, public ua
   static constexpr size_t ACTION_POS = 11;
   static constexpr size_t POWER_COMMAND_VALUE_POS = 5;
   static constexpr size_t TEMPERATURE_COMMAND_VALUE_POS = 7;
-  static constexpr size_t COMMAND_PADDING_POS = 12;
 
   static constexpr uint8_t START_MARKER = 0x5A;
   static constexpr uint8_t END_MARKER = 0x5B;
