@@ -252,42 +252,26 @@ void MillPanelHeaterGen2::control(const climate::ClimateCall &call) {
     ESP_LOGD(TAG, "control() requested target_temperature=%.1f", *requested_target_temperature);
   }
 
-  if (const auto mode = call.get_mode()) {
-    switch (*mode) {
+  if (requested_mode.has_value()) {
+    switch (*requested_mode) {
       case climate::CLIMATE_MODE_OFF:
         this->send_power_command_(0x00);
-        this->action = climate::CLIMATE_ACTION_OFF;
+        ESP_LOGD(TAG, "Mode command sent; awaiting C9 status confirmation");
         break;
       case climate::CLIMATE_MODE_HEAT:
         this->send_power_command_(0x01);
+        ESP_LOGD(TAG, "Mode command sent; awaiting C9 status confirmation");
         break;
       default:
+        ESP_LOGW(TAG, "Ignoring unsupported mode request");
         break;
     }
-
-    this->mode = *mode;
-    ESP_LOGD(
-        TAG,
-        "publish_state() [control mode request]: target_temperature=%.1f, current_temperature=%.1f, mode=%s, action=%s",
-        this->target_temperature, this->current_temperature, LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
-        LOG_STR_ARG(climate::climate_action_to_string(this->action)));
-    this->publish_state();
-    this->publish_power_state_();
   }
 
-  if (const auto target_temperature = call.get_target_temperature()) {
-    const auto temperature = static_cast<uint8_t>(*target_temperature);
+  if (requested_target_temperature.has_value()) {
+    const auto temperature = static_cast<uint8_t>(*requested_target_temperature);
     this->send_temperature_command_(temperature);
-    ESP_LOGD(TAG, "target_temperature update [control target temperature request]: old=%.1f, new=%.1f",
-             this->target_temperature, static_cast<float>(temperature));
-    this->target_temperature = temperature;
-    ESP_LOGD(TAG,
-             "publish_state() [control target temperature request]: target_temperature=%.1f, "
-             "current_temperature=%.1f, mode=%s, action=%s",
-             this->target_temperature, this->current_temperature,
-             LOG_STR_ARG(climate::climate_mode_to_string(this->mode)),
-             LOG_STR_ARG(climate::climate_action_to_string(this->action)));
-    this->publish_state();
+    ESP_LOGD(TAG, "Temperature command sent; awaiting C9 status confirmation");
   }
 }
 

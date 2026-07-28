@@ -30,6 +30,75 @@ TEST(MillPanelHeaterGen2Test, SendsTemperatureSixDegreeFrame) {
   EXPECT_EQ(uart.tx, expected);
 }
 
+TEST(MillPanelHeaterGen2Test, TemperatureControlWaitsForStatusConfirmation) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  heater.set_uart_parent(&uart);
+  heater.target_temperature = 10.0f;
+  heater.current_temperature = 21.0f;
+  heater.mode = climate::CLIMATE_MODE_HEAT;
+  heater.action = climate::CLIMATE_ACTION_IDLE;
+
+  auto call = heater.make_call();
+  call.set_target_temperature(11.0f);
+  heater.control(call);
+
+  const std::vector<uint8_t> expected{
+      0x5A, 0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x0B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x84, 0x5B,
+  };
+  EXPECT_EQ(uart.tx, expected);
+  EXPECT_FLOAT_EQ(heater.target_temperature, 10.0f);
+  EXPECT_FLOAT_EQ(heater.current_temperature, 21.0f);
+  EXPECT_EQ(heater.mode, climate::CLIMATE_MODE_HEAT);
+  EXPECT_EQ(heater.action, climate::CLIMATE_ACTION_IDLE);
+}
+
+TEST(MillPanelHeaterGen2Test, PowerOffControlWaitsForStatusConfirmation) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  heater.set_uart_parent(&uart);
+  heater.target_temperature = 11.0f;
+  heater.current_temperature = 21.0f;
+  heater.mode = climate::CLIMATE_MODE_HEAT;
+  heater.action = climate::CLIMATE_ACTION_IDLE;
+
+  auto call = heater.make_call();
+  call.set_mode(climate::CLIMATE_MODE_OFF);
+  heater.control(call);
+
+  const std::vector<uint8_t> expected{
+      0x5A, 0x00, 0x10, 0x06, 0x00, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x5D, 0x5B,
+  };
+  EXPECT_EQ(uart.tx, expected);
+  EXPECT_FLOAT_EQ(heater.target_temperature, 11.0f);
+  EXPECT_FLOAT_EQ(heater.current_temperature, 21.0f);
+  EXPECT_EQ(heater.mode, climate::CLIMATE_MODE_HEAT);
+  EXPECT_EQ(heater.action, climate::CLIMATE_ACTION_IDLE);
+}
+
+TEST(MillPanelHeaterGen2Test, PowerOnControlWaitsForStatusConfirmation) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  heater.set_uart_parent(&uart);
+  heater.target_temperature = 11.0f;
+  heater.current_temperature = 21.0f;
+  heater.mode = climate::CLIMATE_MODE_OFF;
+  heater.action = climate::CLIMATE_ACTION_OFF;
+
+  auto call = heater.make_call();
+  call.set_mode(climate::CLIMATE_MODE_HEAT);
+  heater.control(call);
+
+  const std::vector<uint8_t> expected{
+      0x5A, 0x00, 0x10, 0x06, 0x00, 0x47, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x5E, 0x5B,
+  };
+  EXPECT_EQ(uart.tx, expected);
+  EXPECT_FLOAT_EQ(heater.target_temperature, 11.0f);
+  EXPECT_FLOAT_EQ(heater.current_temperature, 21.0f);
+  EXPECT_EQ(heater.mode, climate::CLIMATE_MODE_OFF);
+  EXPECT_EQ(heater.action, climate::CLIMATE_ACTION_OFF);
+}
+
 TEST(MillPanelHeaterGen2Test, UpdatesStateFromStatusFrame) {
   MockUARTComponent uart;
   TestableMillPanelHeaterGen2 heater;
