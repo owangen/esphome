@@ -294,7 +294,7 @@ void MillPanelHeaterGen2::control(const climate::ClimateCall &call) {
   }
 
   if (requested_target_temperature.has_value() && target_temperature_is_valid) {
-    const auto temperature = static_cast<uint8_t>(*requested_target_temperature);
+    const auto temperature = static_cast<uint8_t>(roundf(*requested_target_temperature));
     this->send_temperature_command_(temperature);
     ESP_LOGD(TAG, "Temperature command sent; awaiting C9 status confirmation");
   }

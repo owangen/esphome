@@ -73,6 +73,21 @@ TEST(MillPanelHeaterGen2Test, TemperatureControlAcceptsSupportedRangeEndpoints) 
   EXPECT_EQ(uart.tx, expected);
 }
 
+TEST(MillPanelHeaterGen2Test, TemperatureControlRoundsToWholeDegreeProtocolStep) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  heater.set_uart_parent(&uart);
+
+  auto call = heater.make_call();
+  call.set_target_temperature(11.6f);
+  heater.control(call);
+
+  const std::vector<uint8_t> expected{
+      0x5A, 0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x85, 0x5B,
+  };
+  EXPECT_EQ(uart.tx, expected);
+}
+
 TEST(MillPanelHeaterGen2Test, TemperatureControlRejectsValuesOutsideSupportedRange) {
   MockUARTComponent uart;
   TestableMillPanelHeaterGen2 heater;
@@ -127,6 +142,31 @@ TEST(MillPanelHeaterGen2Test, PowerOnControlWaitsForStatusConfirmation) {
 
   const std::vector<uint8_t> expected{
       0x5A, 0x00, 0x10, 0x06, 0x00, 0x47, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x5E, 0x5B,
+  };
+  EXPECT_EQ(uart.tx, expected);
+  EXPECT_FLOAT_EQ(heater.target_temperature, 11.0f);
+  EXPECT_FLOAT_EQ(heater.current_temperature, 21.0f);
+  EXPECT_EQ(heater.mode, climate::CLIMATE_MODE_OFF);
+  EXPECT_EQ(heater.action, climate::CLIMATE_ACTION_OFF);
+}
+
+TEST(MillPanelHeaterGen2Test, CombinedControlSendsModeBeforeTemperatureAndWaitsForStatusConfirmation) {
+  MockUARTComponent uart;
+  TestableMillPanelHeaterGen2 heater;
+  heater.set_uart_parent(&uart);
+  heater.target_temperature = 11.0f;
+  heater.current_temperature = 21.0f;
+  heater.mode = climate::CLIMATE_MODE_OFF;
+  heater.action = climate::CLIMATE_ACTION_OFF;
+
+  auto call = heater.make_call();
+  call.set_mode(climate::CLIMATE_MODE_HEAT);
+  call.set_target_temperature(12.0f);
+  heater.control(call);
+
+  const std::vector<uint8_t> expected{
+      0x5A, 0x00, 0x10, 0x06, 0x00, 0x47, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x5E, 0x5B,
+      0x5A, 0x00, 0x10, 0x22, 0x00, 0x46, 0x01, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x85, 0x5B,
   };
   EXPECT_EQ(uart.tx, expected);
   EXPECT_FLOAT_EQ(heater.target_temperature, 11.0f);
